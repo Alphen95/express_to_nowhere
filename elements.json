@@ -1,0 +1,73 @@
+{
+    "generic":{"type":"generic1", "in":0, "out":0, "sprite":[ 0, 0,1,1], "info":[0]},
+    "obj_types": ["gr_relay", "me_relay", "hv_relay", "cu_relay", "resistor", "akumbatt", "signlamp", "elswitch", "group_cn", "el_motor"],
+    "elements":{
+        "gr-2":   {"type":"gr_relay", "in":2, "out":1, "sprite":[ 6, 0,1,1], "info":[0]},
+        "gr-3":   {"type":"gr_relay", "in":3, "out":1, "sprite":[ 0, 1,2,1], "info":[0]},
+
+        "dr-1":   {"type":"me_relay", "in":2, "out":1, "sprite":[ 2, 0,2,1], "info":[]},
+
+        "lk-2":   {"type":"hv_relay", "in":1, "out":0, "sprite":[ 2, 1,2,1], "info":[]},
+        
+        "rt-5":   {"type":"cu_relay", "in":0, "out":1, "sprite":[ 5, 0,1,1], "info":[0,200]},
+        
+        "yas-7":  {"type":"resistor", "in":7, "out":0, "sprite":[ 2, 3,2,2], "info":[4]},
+        "yas-12": {"type":"resistor", "in":12,"out":0, "sprite":[ 0, 8,2,1], "info":[6]},
+
+        "akb-3":  {"type":"akumbatt", "in":0, "out":0, "sprite":[ 0, 3,2,2], "info":[]},
+
+        "grk-8":  {"type":"group_cn", "in":2, "out":10,"sprite":[ 4, 3,2,2], "info":[8]},
+        "grk-14": {"type":"group_cn", "in":2, "out":20,"sprite":[ 0, 5,2,3], "info":[14]},
+
+        "ls-4":   {"type":"signlamp", "in":1, "out":0, "sprite":[ 1, 0,1,1], "info":[]},
+        "ls-4+":  {"type":"signlamp", "in":1, "out":0, "sprite":[ 2, 0,1,1], "info":[]},
+
+        "ep-1":   {"type":"elswitch", "in":0, "out":1, "sprite":[ 3, 0,1,1], "info":[]},
+        "ep-1+":  {"type":"elswitch", "in":0, "out":1, "sprite":[ 4, 0,1,1], "info":[]},
+
+        "dpt-7":  {"type":"el_motor", "in":0, "out":0, "sprite":[ 0,10,3,2], "info":[0.4, 14]},
+        "dk-241": {"type":"el_motor", "in":0, "out":0, "sprite":[ 2,10,3,2], "info":[0.8, 3]},
+        "dk-298": {"type":"el_motor", "in":0, "out":0, "sprite":[ 2, 8,3,2], "info":[0.05, 4]}
+
+    },
+    "text_lines":{
+        "names":{
+            "gr-3":"ГР-3 (групповое реле)",
+            "gr-2":"ГР-2 (групповое реле)",
+            "dr-2":"ДР-1 (двойное реле)",
+            "lk-2":"ЛК-2 (линейный контактор)",
+            "rt-5":"РТ-5 (реле тока)",
+    
+            "akb-3":"АКБ-3 (батарея)",
+    
+            "ls-4":"ЛС-4Ж (лампа сигнальная)",
+            "ep-1":"ЭП-1 (переключатель)",
+    
+            "grk-8":"ГрК-8 (груп. контроллер)",
+            "grk-14":"ГрК-14 (груп. контроллер)",
+    
+            "yas-7":"ЯС-7 (ящик сопротивлений)",
+            "yas-12":"ЯС-12 (ящик сопротивлений)",
+            
+            "dpt-7":"ДПт-7 (тяговый двигатель)"
+        },
+        "inputs": "Подключения (+):",
+        "outputs": "Подключения (-):",
+        "group_controller": "Вал в {} позиции",
+        "engine": "{} А на контактах",
+        "active": "Контакты: замкнуты",
+        "inactive": "Контакты: разомкнуты",
+        "type": "Тип:",
+        "relay_0": "AND",
+        "relay_1": "OR",
+        "max": "максимальное",
+        "min": "минимальное",
+        "res_percent": "Процент сопротивления:",
+        "res_max": "Макс. сопротивление",
+        "ohm": "Ом",
+        "contact": "Контактор #",
+        "pos": "Позиция вала",
+        "peril_current": "Пороговый ток:"
+
+    }
+}
