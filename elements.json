@@ -2,6 +2,10 @@
     "generic":{"type":"generic1", "in":0, "out":0, "sprite":[ 0, 0,1,1], "info":[0]},
     "obj_types": ["gr_relay", "me_relay", "hv_relay", "cu_relay", "resistor", "akumbatt", "signlamp", "elswitch", "group_cn", "el_motor"],
     "elements":{
+        "wire_l": {"type":"wirecrap", "in":0, "out":0, "sprite":[ 0,12,1,1], "info":[]},
+        "wire_m": {"type":"wirecrap", "in":0, "out":0, "sprite":[ 1,12,1,1], "info":[]},
+        "wire_r": {"type":"wirecrap", "in":0, "out":0, "sprite":[ 2,12,1,1], "info":[]},
+
         "gr-2":   {"type":"gr_relay", "in":2, "out":1, "sprite":[ 6, 0,1,1], "info":[0]},
         "gr-3":   {"type":"gr_relay", "in":3, "out":1, "sprite":[ 0, 1,2,1], "info":[0]},
 

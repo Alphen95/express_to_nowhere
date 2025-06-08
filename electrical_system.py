@@ -1,6 +1,8 @@
 import random
 import pygame as pg
 import threading
+import math
+
 
 class EditorTable:
     def __init__(self, heading, objects_a, objects_b, wire_amt, font):
@@ -144,7 +146,9 @@ class ElectricalSystem:
         self.ui_scale = 5 # масштабирование интерфейса
         self.km_draw = ["w/6*2",0,16,11] # шняжка для КМ
 
-        self.rk_channel = pg.mixer.find_channel()
+        self.rk_channel = pg.mixer.Channel(0)
+        self.eng_channel = pg.mixer.Channel(1)
+        self.eng_sound = 0
 
         self.km = {
             "pos":0,
@@ -167,6 +171,7 @@ class ElectricalSystem:
             "rk_stop":pg.mixer.Sound("res/sound/rk_stop.wav"),
             "rk_spin":pg.mixer.Sound("res/sound/rk_spin.wav"),
         }
+        for i in range(30): self.sounds[f"engine_{i}"] = pg.mixer.Sound(f"res/sound/engine_{i}.wav")
 
         for sound in self.sounds: self.sounds[sound].set_volume(0.05)
 
@@ -229,7 +234,7 @@ class ElectricalSystem:
                 self.wires[0] = 0
                 wire_changes = self.generate_wire_block(self.wire_amt)
                 sum_resistance = 0
-                connection_mode = 0
+                connection_mode = 1
                 engines = []
                 circuit_bridged = True
 
@@ -356,6 +361,7 @@ class ElectricalSystem:
                 self.high_voltage = circuit_bridged
                 self.connection_mode = connection_mode
                 current = 0
+                eng_koefficient = 0
 
                 self.wires[self.km["mapout"][self.km["pos"]]] = 1
 
@@ -385,31 +391,39 @@ class ElectricalSystem:
                             resistance = sum_resistance+self.engine_amt*eng_resistance
 
                         current = (self.network_voltage- counter_emf)/resistance
-                        self.torque = self.engine_amt*eng_koefficient*current
 
-                        for engine in engines: engine.state = current
-                    else:
-                        for engine in engines: engine.state = 0
-                        self.torque = 0
-                else:
-                    for engine in engines: engine.state = 0
-                    self.torque = 0
-
+                for engine in engines: engine.state = current
+                self.torque = self.engine_amt*eng_koefficient*current
                 self.current = current
+                if math.ceil(self.axial_speed/7) != self.eng_sound:
+                    self.eng_sound = math.ceil(self.axial_speed/7)
+                    if self.eng_sound > 0: self.eng_channel.play(self.sounds[f"engine_{min(self.eng_sound,30)-1}"],-1)
+                    else: self.eng_channel.stop()
+                    
+
+
             else:
                 self.rk_channel.stop()
+                self.eng_channel.stop()
                 self.current = 0
                 self.torque = 0
 
             pg.time.wait(50)
 
-    def draw(self):
+    def draw_grid(self):
         surf = pg.Surface([i*self.tile_size for i in self.display_size])
         surf.fill((102,102,102))
-        dx, dy = [self.tile_size*i for i in ((self.display_size[0]-self.net_size[0])/2, (self.display_size[1]-self.net_size[1])/2)]
+        dx, dy = [self.tile_size*i for i in ((self.display_size[0]-self.net_size[0])/2, (self.display_size[1]-self.net_size[1])/2+0.5)]
         surf.fill((128,128,128),(dx,dy,self.net_size[0]*self.tile_size,self.net_size[1]*self.tile_size))
 
         for x in range(self.net_size[0]):
+            if x == 0:
+                surf.blit(self.sprites["wire_l"],(dx+x*self.tile_size,dy-self.tile_size))
+            elif x == self.net_size[0]-1:
+                surf.blit(self.sprites["wire_r"],(dx+x*self.tile_size,dy-self.tile_size))
+            else:
+                surf.blit(self.sprites["wire_m"],(dx+x*self.tile_size,dy-self.tile_size))
+
             for y in range(self.net_size[1]):
                 surf.blit(self.sprites["inv_tile"],(dx+x*self.tile_size,dy+y*self.tile_size))
 
@@ -423,16 +437,18 @@ class ElectricalSystem:
                 if obj.type == "elswitch" and obj.state > 0: 
                     sprite+="+"
 
-                if obj.underlay != None and obj.underlay in self.sprites:
-                    surf.blit(self.sprites[obj.underlay],(obj_pos[0]+dx, obj_pos[1]+dy))
-                surf.blit(self.sprites[sprite],(obj_pos[0]+dx, obj_pos[1]+dy))
+                if enum == self.held:
+                    tmp = pg.Surface(self.sprites[sprite].get_size())
+                    tmp.blit(self.sprites[sprite],(0,0))
+                    tmp.set_alpha(64)
+                    surf.blit(tmp,(obj_pos[0]+dx, obj_pos[1]+dy))
 
-                if self.held == enum:
-                    pg.draw.rect(surf, (216,216,216),(obj_pos[0]+dx, obj_pos[1]+dy,obj.rect[2]*self.tile_size,obj.rect[3]*self.tile_size),2)
+                else:
+                    surf.blit(self.sprites[sprite],(obj_pos[0]+dx, obj_pos[1]+dy))
 
         return surf
 
-    def editor(self, mouse, keypresses):
+    def draw_editor(self, mouse, keypresses):
         surf = pg.Surface([i*self.tile_size for i in self.display_size],pg.SRCALPHA)
         if self.editing != -1:
             e_obj = self.objects[self.editing]
@@ -545,29 +561,41 @@ class ElectricalSystem:
         if self.open:
 
             m_old = mouse[0]
-            d = self.draw()
+            d = self.draw_grid()
             if type(draw_pos) == str:
                 draw_pos = [screen_size[0]/2-d.get_width()/2, screen_size[1]/2-d.get_height()/2]
             draw_surf.blit(d, draw_pos)
-            mouse = [[mouse[0][i]-draw_pos[i] for i in (0,1)], mouse[1], mouse[2]]
-            e = self.editor(mouse, kbd)
+            mouse = [[mouse[0][i]-draw_pos[i] for i in (0,1)], mouse[1], mouse[2], mouse[3]]
+            e = self.draw_editor(mouse, kbd)
             draw_surf.blit(e, draw_pos)
 
+            if self.held != -1:
+                obj = self.objects[self.held]
+                sp = self.sprites[obj.sprite]
+                draw_surf.blit(sp,[m_old[i]-self.tile_size/2 for i in [0,1]])
 
-            if mouse[2] and not kbd_pressed[pg.K_LALT] and not kbd_pressed[pg.K_LCTRL]: 
-                self.click(mouse[0])
-            if mouse[2] and kbd_pressed[pg.K_LALT]:
-                if self.held == -1:
-                    oe = self.locate(mouse[0])
-                    self.held = oe if oe != None else -1
-                else:
-                    self.move(mouse[0])
-                    self.held = -1
-            elif mouse[2] and kbd_pressed[pg.K_LCTRL] and self.editing == -1:
+            mod = {
+                "alt":kbd_pressed[pg.K_LALT] or kbd_pressed[pg.K_RALT], 
+                "ctrl":kbd_pressed[pg.K_LCTRL] or kbd_pressed[pg.K_RCTRL], 
+            }
+
+            if mouse[2] and not(mod["alt"] or mod["ctrl"]): 
                 oe = self.locate(mouse[0])
-                self.editing = oe if oe != None and (self.objects[oe].inputs+self.objects[oe].outputs != []) else -1
+                if oe != -1:
+                    if self.objects[oe].type in "elswitch":
+                        self.objects[oe].state = abs(1-self.objects[oe].state)
+
+            elif mod["alt"]:
+                if mouse[2]: 
+                    self.held = self.locate(mouse[0])
+                elif mouse[3]: 
+                    self.move(mouse[0])
+
+            elif mouse[2] and mod["ctrl"] and not mod["alt"] and self.editing == -1: 
+                self.editing = self.locate(mouse[0])
+                
             elif self.editing == -1:
-                if not kbd_pressed[pg.K_LALT]: self.held = -1
+                if not mod["alt"]: self.held = -1
                 tt = self.tooltip(mouse[0])
                 if tt != None: 
                     tt_pos = [min(screen_size[i]-tt.get_size()[i],m_old[i]+20) for i in (0,1)]
@@ -583,9 +611,9 @@ class ElectricalSystem:
         return draw_surf
 
     def get_selected(self, m_pos):
-        deltas = [self.tile_size*i for i in ((self.display_size[0]-self.net_size[0])/2, (self.display_size[1]-self.net_size[1])/2)]
+        deltas = [self.tile_size*i for i in ((self.display_size[0]-self.net_size[0])/2, (self.display_size[1]-self.net_size[1])/2+0.5)]
 
-        return [int((m_pos[i]-deltas[i])//self.tile_size) for i in (0,1)] #Selected Tile
+        return [int((m_pos[i]-deltas[i])/self.tile_size) for i in (0,1)] #Selected Tile
 
     def locate(self, m_pos):
         st = self.get_selected(m_pos)
@@ -597,12 +625,6 @@ class ElectricalSystem:
                 return -1
         else:
             return -1
-
-    def click(self, m_pos):
-        oe = self.locate(m_pos)
-        if oe != -1:
-            if self.objects[oe].type in "elswitch":
-                self.objects[oe].state = abs(1-self.objects[oe].state)
 
     def tooltip(self, m_pos):
         oe = self.locate(m_pos)
@@ -664,6 +686,8 @@ class ElectricalSystem:
                             break
                     if not flag: break
                 if flag: obj.rect = [x,y]+obj.rect[2:]
+        
+        self.held = -1
 
     def add(self, add_obj, pos=[]):
         if add_obj in self.base_obj_list:

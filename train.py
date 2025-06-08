@@ -15,19 +15,35 @@ def sgn(x):
     elif x < 0: return -1
     else: return 0
 
+def xor(a, b):
+    return 1 if (a == 1 and b == 0) or (a == 0 and b == 1) else 0
+
+def angle(sin, cos):
+    a_acos = math.acos(cos)
+    if sin < 0:
+        ang = math.degrees(-a_acos) % 360
+    else: 
+        ang = math.degrees(a_acos)
+    return ang
+
 class Bogey:
     def __init__(self, pos, cur_track, identifier):
         self.pos = pos
         self.angle = 0
+        self.vectors = [0,0]
 
         self.velocity = 0
         self.velocity_vector = 1
 
         self.track = cur_track
+        self.ride_mode = 0
+        self.mod = 0
 
         self.is_alive = True
-        self.debug = False
+        self.debug = True
         self.identifier = identifier
+
+        self.switch_state = 0
 
         self.thread = threading.Thread(target=self.cycle)
         self.thread.start()
@@ -44,57 +60,73 @@ class Bogey:
             if self.track != None:
                 c_track = tracks[self.track]
                 
-                start, end = c_track.start, c_track.end
+                a, b = c_track.s_pos, c_track.e_pos
 
                 stack = ["",""]
+                angle_cone = "x" if (45 <= self.angle%360 <= 135 or 225 <= self.angle%360 <= 315) else "y"
+
                 for enum, point in enumerate(c_track.points):
                     stack = [stack[1],point]
-
                     if stack[0] != "":
-                        if stack[0][0] <= self.pos[0] <= stack[1][0]:
-                            self.angle = c_track.angles[enum-1]
 
-                if self.pos[0] <= start[0] and self.velocity_vector == -1:
-                    if self.debug: print(f"{self.identifier}: reached the end of {self.track}")
+                        if angle_cone == "x" and min(stack[0][0],stack[1][0]) <= self.pos[0] <= max(stack[0][0],stack[1][0]):
+                            self.angle = (c_track.angles[self.ride_mode][enum-1])%360
+                            self.vectors = c_track.vectors[self.ride_mode][enum-1]
 
-                    self.track = None
-                    node = nodes[f"{c_dx}:{c_dy}"]
+                        if angle_cone == "y" and min(stack[0][1],stack[1][1]) <= self.pos[1] <= max(stack[0][1],stack[1][1]):
+                            self.angle = (c_track.angles[self.ride_mode][enum-1])%360
+                            self.vectors = c_track.vectors[self.ride_mode][enum-1]
 
-                    if len(node[0]) == 1:
-                        self.track = node[0][0]
-                        if self.debug: print(f"{self.identifier}: moved to {self.track}")
 
-                    elif len(node[0]) > 1:
-                        if f"{c_dx}:{c_dy}" in switches and switches[f"{c_dx}:{c_dy}"][0] != None:
-                            self.track = switches[f"{c_dx}:{c_dy}"][0][0]
-                            if self.debug: print(f"{self.identifier}: moved to {self.track}")
+                nxt = []
+                old = self.track
 
-                        else:
-                            self.track = random.choice(node[0])
-                            if self.debug: print(f"{self.identifier}: moved to {self.track} (by miracle of random choice)")
+                if angle_cone == "x":
+
+                    if self.pos[0] < min(a[0], b[0]):
+                        self.track = None
+                        nxt = c_track.s_links if min(a[0], b[0]) == a[0] else c_track.e_links
+
+                    elif self.pos[0] > max(a[0], b[0]):
+                        self.track = None
+                        nxt = c_track.s_links if max(a[0], b[0]) == a[0] else c_track.e_links
+
+                    if self.track == None and self.debug:
+                        print(f"{self.identifier}: changing on x-axis. {self.pos[0]}, {a[0]}, {b[0]}")
+
+                if angle_cone == "y":
+
+                    if self.pos[1] < min(a[1], b[1]):
+                        self.track = None
+                        nxt = c_track.s_links if min(a[1], b[1]) == a[1] else c_track.e_links
+                        
+                    elif self.pos[1] > max(a[1], b[1]):
+                        self.track = None
+                        nxt = c_track.s_links if max(a[1], b[1]) == a[1] else c_track.e_links
+
+                    if self.track == None and self.debug: 
+                        print(f"{self.identifier}: changing on y-axis. {self.pos[1]}, {a[1]}, {b[1]}")
+
+                if self.track == None and self.debug: print(f"{self.identifier}: reached the end of {old}")
+
+                if len(nxt) == 1:
+                    self.track = nxt[0]
+                    if self.debug: print(f"{self.identifier}: moved to {self.track}")
+                elif len(nxt) > 1:
+                    self.track = nxt[self.switch_state]
+                    if self.debug: print(f"{self.identifier}: moved to {self.track}")
+                elif self.track == None:
+                    if self.debug: print(f"{self.identifier}: succesfully derailed!")
+
+                if self.track != old and self.track != None:
+                    if old in tracks[self.track].s_links:
+                        self.ride_mode = 0
+                        print(f"{self.identifier}: changed to {self.track} from front")
                     else:
-                        if self.debug: print(f"{self.identifier}: succesfully derailed!")
+                        self.ride_mode = 1
+                        print(f"{self.identifier}: changed to {self.track} from tail")
 
-                elif self.pos[0] >= end[0] and self.velocity_vector == 1:
-                    if self.debug: print(f"{self.identifier}: reached the end of {self.track}")
-                    self.track = None
-                    node = nodes[f"{c_dx}:{c_dy}"]
-
-                    if len(node[1]) == 1:
-                        self.track = node[1][0]
-                        if self.debug: print(f"{self.identifier}: moved to {self.track}")
-
-                    elif len(node[1]) > 1:
-                        if f"{c_dx}:{c_dy}" in switches and switches[f"{c_dx}:{c_dy}"][0] != None:
-                            self.track = switches[f"{c_dx}:{c_dy}"][1][0]
-                            if self.debug: print(f"{self.identifier}: moved to {self.track}")
-
-                        else:
-                            self.track = random.choice(node[1])
-                            if self.debug: print(f"{self.identifier}: moved to {self.track} (by miracle of random choice)")
-
-                    else:
-                        if self.debug: print(f"{self.identifier}: succesfully derailed!")
+                    self.ride_mode = xor(self.ride_mode, self.velocity_vector==-1)
 
             else:
                 if self.velocity > 0: self.velocity -= 0.01
@@ -125,8 +157,8 @@ class Train:
         self.clock = pg.time.Clock()
 
         self.bogeys = [
-            Bogey([pos[0]-bogey_displacement,pos[1]], cur_track, f"{identifier}_bogey_1"),
-            Bogey([pos[0]+bogey_displacement,pos[1]], cur_track, f"{identifier}_bogey_2")
+            Bogey([pos[0],pos[1]-bogey_displacement], cur_track, f"{identifier}_bogey_1"),
+            Bogey([pos[0],pos[1]+bogey_displacement], cur_track, f"{identifier}_bogey_2")
         ]
 
         #self.thread = threading.Thread(target=self.cycle)
@@ -135,28 +167,33 @@ class Train:
 
     def cycle(self, tick):
         for i, bogey in enumerate(self.bogeys):
-            bogey.velocity_vector = self.velocity_vector
-            bogey.pos[0] += self.velocity*math.cos(math.radians(bogey.angle))*self.velocity_vector/tick
-            bogey.pos[1] += -self.velocity*math.sin(math.radians(bogey.angle))*self.velocity_vector/tick
+            if bogey.track != None:
+                bogey.velocity_vector = self.velocity_vector
+                bogey.pos[0] += self.velocity*bogey.vectors[0]*self.velocity_vector/tick
+                bogey.pos[1] += self.velocity*bogey.vectors[1]*self.velocity_vector/tick
 
-            bogey.pos[0] = round(bogey.pos[0],2)
-            bogey.pos[1] = round(bogey.pos[1],2)
+                bogey.pos[0] = round(bogey.pos[0],2)
+                bogey.pos[1] = round(bogey.pos[1],2)
 
-            if bogey.angle == 0 and (bogey.pos[1]//256+0.6)*256 >= bogey.pos[1] >= (bogey.pos[1]//256+0.4)*256:
-                bogey.pos[1] = (bogey.pos[1]//256+0.5)*256
+                if bogey.angle in [90,270] and (bogey.pos[1]//256+0.6)*256 >= bogey.pos[1] >= (bogey.pos[1]//256+0.4)*256:
+                    bogey.pos[1] = (bogey.pos[1]//256+0.5)*256
+                elif bogey.angle in [0,180] and (bogey.pos[0]//256+0.6)*256 >= bogey.pos[0] >= (bogey.pos[0]//256+0.4)*256:
+                    bogey.pos[0] = (bogey.pos[0]//256+0.5)*256
 
-            self.occupied_tracks[i] = bogey.track
+                self.occupied_tracks[i] = bogey.track
 
         self.pos = [
             round((self.bogeys[0].pos[0]+self.bogeys[1].pos[0])/2,2),
             round((self.bogeys[0].pos[1]+self.bogeys[1].pos[1])/2,2)
         ]
 
-        if self.bogeys[0].pos[1]-self.bogeys[1].pos[1] != 0:
-            self.angle = round(
-                -(math.degrees(math.atan((self.bogeys[0].pos[1]-self.bogeys[1].pos[1])/(self.bogeys[0].pos[0]-self.bogeys[1].pos[0]))))
-            )
-        else: self.angle = 0
+        if self.bogeys[0].pos[1]-self.bogeys[1].pos[1] == 0 or self.bogeys[0].pos[0]-self.bogeys[1].pos[0] == 0:
+            self.angle = self.bogeys[0].angle
+        else:
+            dx = self.bogeys[0].pos[0]-self.bogeys[1].pos[0]
+            dy = self.bogeys[0].pos[1]-self.bogeys[1].pos[1]
+            l = (dx**2+dy**2)**0.5
+            self.angle = angle(dx/l, dy/l)+180
             
 
 
@@ -192,8 +229,8 @@ class Consist:
         self.electrical_system = electrical_system.ElectricalSystem(
             wire_amt = 30, 
             obj_list = info["elements"],
-            ns = (9,6), 
-            ds = (12,9), 
+            ns = (12,9), 
+            ds = (15,11), 
             tls = 64,
             tt = info["text_lines"], font=font
         )
@@ -208,7 +245,7 @@ class Consist:
 
         for i in range(carriage_amt):
             self.trains.append(Train(
-                (pos[0]+size*i,pos[1]),trtype if type(trtype) == str else trtype[i%len(trtype)],cur_track,int(size/2-2),f"carriage_{i}"
+                (pos[0],pos[1]+size*i),trtype if type(trtype) == str else trtype[i%len(trtype)],cur_track,int(size/2-2),f"carriage_{i}"
             ))
             if i%len(trtype) == len(trtype)-1: self.trains[-1].flipped = True
 
@@ -234,11 +271,11 @@ class Consist:
 
     def physical_think(self, tick):
         self.torque = self.electrical_system.torque
-        traction_force = (self.torque*self.reductional_coef*self.wheel_radius) - self.velocity**2*self.air_friction_coef
+        traction_force = (self.torque*self.reductional_coef/self.wheel_radius) - self.velocity**2*self.air_friction_coef
         self.acceleration = traction_force/self.mass
         self.velocity += self.acceleration/tick
         self.velocity = max(0, self.velocity)
-        self.pixel_velocity = round(self.velocity*21,2)
+        self.pixel_velocity = round(self.velocity*50,2)#round(self.velocity*21,2)
 
         self.electrical_system.axial_speed = self.velocity/self.wheel_radius*self.reductional_coef
 

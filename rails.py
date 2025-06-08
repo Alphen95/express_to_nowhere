@@ -54,8 +54,8 @@ class Rail:
             for i in range(self.discrete+1):
                 t = i/self.discrete
                 self.points.append((
-                    x1*(1-t)**3+3*x2*t*((1-t)**2)+3*x3*(1-t)*(t**2)+x4*t**3,
-                    y1*(1-t)**3+3*y2*t*((1-t)**2)+3*y3*(1-t)*(t**2)+y4*t**3
+                    round(x1*(1-t)**3+3*x2*t*((1-t)**2)+3*x3*(1-t)*(t**2)+x4*t**3),
+                    round(y1*(1-t)**3+3*y2*t*((1-t)**2)+3*y3*(1-t)*(t**2)+y4*t**3)
                 ))
         
         stack = ["",""]

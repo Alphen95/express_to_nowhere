@@ -65,7 +65,7 @@ syst = electrical_system.ElectricalSystem(
     wire_amt = 30, 
     obj_list = info["elements"],
     ns = (9,6), 
-    ds = (12,9), 
+    ds = (9,7), 
     tls = 64,
     tt = text_lines, font=font
 )
@@ -122,6 +122,7 @@ while working:
         f"Rб: {syst.total_resistance} Ом",
         f"цепь: {'собрана' if syst.high_voltage else 'разобрана'}",
         f"угловая: {round(syst.axial_speed,2)} рад/с",
+        f"линейка: {round(syst.axial_speed*70/29*0.51*3.6,2)} км/ч",
         f"ток: {round(syst.current,2)} А",
         f"км: {syst.km['pos']} позиция",
     ]
