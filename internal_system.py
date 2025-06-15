@@ -115,7 +115,7 @@ class ElectricalObject:
         self.sprite = sprite
         self.underlay = None if underlay == [] else random.choice(underlay)
 
-class ElectricalSystem:
+class InternalSystem:
     def __init__(self, wire_amt, obj_list, ns, ds, tls, tt, font):
         self.objects = [] # объекты
         self.net_size = ns # размер сетки ящика
@@ -137,27 +137,62 @@ class ElectricalSystem:
         self.current = 0 #ток двигателей
         
         self.torque = 0 # вырабатываемый крутящий момент
+        self.pressure = 0 # давление в ТЦ
         self.axial_speed = 0 # получаемая угловая скорость
 
-        self.open = False
+        self.open = False # состояние редактора
         self.held = -1 # держимый объект
         self.editing = -1 # редактируемый объект
         self.editor_window = None # штучка для редактирования (переменная окна)
         self.ui_scale = 5 # масштабирование интерфейса
-        self.km_draw = ["w/6*2",0,16,11] # шняжка для КМ
 
         self.rk_channel = pg.mixer.Channel(0)
         self.eng_channel = pg.mixer.Channel(1)
         self.eng_sound = 0
 
-        self.km = {
+        self.km = { # ВСЕ параметры КМ
             "pos":0,
-            "angle":[0,15],
+            "draw":[
+                [11,30],
+                [11,27],
+                [11,24],
+                [11,21],
+                [11,18],
+                [11,15],
+                [11,12],
+            ],
+            "delta": [2,10],
             "mapout":[
                 3,
                 1,
                 2
             ],
+        }
+
+        self.tk = { # ВСЕ параметры ТК
+            "pos":0,
+            "draw":[
+                [82,9],
+                [82,14],
+                [82,19],
+                [82,24],
+                [82,29],
+            ],
+            "delta": [15,10],
+            "mapout":[
+                (0, 1.2),
+                (1.75, 1.2),
+                (3.5, 1.2),
+                (5.25, 1.2),
+                (7, 1.2),
+            ],
+            #"mapout":[
+            #    (0, 0.7),
+            #    (0, 0.35),
+            #    (0, 0),
+            #    (7, 0.35),
+            #    (7, 0.7),
+            #],
         }
 
         self.tile_net = {}
@@ -214,9 +249,7 @@ class ElectricalSystem:
 
                     images.append(s)
 
-                self.ui_sprites[ifp] = {"i":images, "h":uisp[ifp][1][4]*scale}
-                    
-
+                self.ui_sprites[ifp] = {"i":images, "h":uisp[ifp][1][4]*scale}             
 
     def generate_wire_block(self, amount):
         wires = {}
@@ -408,6 +441,12 @@ class ElectricalSystem:
                 self.current = 0
                 self.torque = 0
 
+            tick = 1/20
+
+            self.pressure += (self.tk["mapout"][self.tk["pos"]][0]-self.pressure)*self.tk["mapout"][self.tk["pos"]][1]*tick
+            if self.pressure < 0.2 and self.tk["mapout"][self.tk["pos"]][0] == 0: self.pressure = 0
+            self.pressure = round(self.pressure, 2)
+
             pg.time.wait(50)
 
     def draw_grid(self):
@@ -534,27 +573,26 @@ class ElectricalSystem:
     def render_graphics(self, screen_size, draw_pos, kbd, kbd_pressed, mouse):
         draw_surf = pg.Surface(screen_size, pg.SRCALPHA)
 
-        if "km_box" in self.ui_sprites:
-            size = self.ui_sprites["km_box"].get_size()
-            x, y = self.km_draw[0], self.km_draw[1]
-            if type(x) == str: x = eval(x, {"w":screen_size[0], "h":screen_size[1]})
-            else: x*=self.ui_scale
-            if type(y) == str: y = eval(y, {"w":screen_size[0], "h":screen_size[1]})
-            else: y*=self.ui_scale
-
+        if "box" in self.ui_sprites:
+            size = self.ui_sprites["box"].get_size()
             base_pos = [
-                screen_size[0]/2-size[0]/2-x, 
-                screen_size[1]-size[1]-y
+                screen_size[0]/2-size[0]/2, 
+                screen_size[1]-size[1]
             ]
-            draw_surf.blit(self.ui_sprites["km_box"], base_pos)
+            draw_surf.blit(self.ui_sprites["box"], base_pos)
 
             if "km" in self.ui_sprites:
-                ang = (self.km["angle"][0]+self.km["angle"][1]*self.km["pos"])%360
-                img = self.ui_sprites["km"]["i"][ang]
-                km_size = img.get_size()
+                img = self.ui_sprites["km"]
                 draw_surf.blit(img, (
-                    base_pos[0]+self.km_draw[2]*self.ui_scale-km_size[0]/2, 
-                    base_pos[1]+self.km_draw[3]*self.ui_scale-km_size[1]/2-self.ui_sprites["km"]["h"]/2
+                    base_pos[0]+(self.km["draw"][self.km["pos"]][0]-self.km["delta"][0])*self.ui_scale,
+                    base_pos[1]+(self.km["draw"][self.km["pos"]][1]-self.km["delta"][1])*self.ui_scale
+                ))
+
+            if "tk" in self.ui_sprites:
+                img = self.ui_sprites["tk"]
+                draw_surf.blit(img, (
+                    base_pos[0]+(self.tk["draw"][self.tk["pos"]][0]-self.tk["delta"][0])*self.ui_scale,
+                    base_pos[1]+(self.tk["draw"][self.tk["pos"]][1]-self.tk["delta"][1])*self.ui_scale
                 ))
 
 
@@ -607,6 +645,9 @@ class ElectricalSystem:
 
         if pg.K_UP in kbd and self.km["pos"] < len(self.km["mapout"])-1: self.km["pos"] += 1
         if pg.K_DOWN in kbd and self.km["pos"] > 0: self.km["pos"] -= 1
+        
+        if pg.K_f in kbd and self.tk["pos"] < len(self.tk["mapout"])-1: self.tk["pos"] += 1
+        if pg.K_r in kbd and self.tk["pos"] > 0: self.tk["pos"] -= 1
 
         return draw_surf
 

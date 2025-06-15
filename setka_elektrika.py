@@ -5,7 +5,7 @@ import pygame as pg
 import threading
 import random
 import json
-import electrical_system
+import internal_system
 
 pg.init()
 clock = pg.time.Clock()
@@ -61,7 +61,7 @@ text_lines = {
     "peril_current": "Пороговый ток:",
 }
 
-syst = electrical_system.ElectricalSystem(
+syst = internal_system.ElectricalSystem(
     wire_amt = 30, 
     obj_list = info["elements"],
     ns = (9,6), 

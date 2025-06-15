@@ -1,5 +1,4 @@
 import pygame as pg
-import math
 
 #ISOMETRIC shnyaga (45 gradusiv)
 #sqrt(2) = 1.4
@@ -39,7 +38,7 @@ class Camera():
         dx += (self.camera_size[0]/min(1,self.scale))/2
         dy += (self.camera_size[1]/min(1,self.scale))/2
 
-        return (int(dx), int(dy))
+        return (dx, dy)
 
     def translate_from(self, coordinates):
         dx, dy = coordinates
@@ -66,20 +65,21 @@ class Camera():
 
             w, h = temp_layers[-1].get_size()
 
-            temp_layers[-1] = pg.transform.scale(temp_layers[-1],(w,h/2))
+            temp_layers[-1] = pg.transform.scale(temp_layers[-1],(w,h/2)).convert()
+            temp_layers[-1].set_colorkey((0,0,0))
 
-        tile_surface = pg.Surface((temp_layers[0].get_width(),temp_layers[0].get_height()+((stacks+offset)*4)), pg.SRCALPHA)
+        #tile_surface = pg.Surface((temp_layers[0].get_width(),temp_layers[0].get_height()+((stacks+offset)*4)), pg.SRCALPHA)
     
-        for i in range(stacks*4*int(4/scale)):
-            layer = temp_layers[int(i/4/int(4/scale))]
+        #for i in range(stacks*4*int(4/scale)):
+        #    layer = temp_layers[int(i/4/int(4/scale))]
+#
+        #    tile_surface.blit(layer, (0,(stacks+offset)*4*int(4/scale)-i))
 
-            tile_surface.blit(layer, (0,(stacks+offset)*4*int(4/scale)-i))
+        #w, h = tile_surface.get_size()
+        #tile_surface = pg.transform.scale(tile_surface,(w*2,h*2)).convert()
+        #tile_surface.set_colorkey((0,0,0))
 
-        w, h = tile_surface.get_size()
-        tile_surface = pg.transform.scale(tile_surface,(w*2,h*2)).convert()
-        tile_surface.set_colorkey((0,0,0))
-
-        return [tile_surface, (stacks+offset)*4*2*int(4/scale), overdraw]
+        return [temp_layers, offset, stacks*scale, scale]#(stacks+offset)*4*2*int(4/scale)]
 
     def render_train(self, img, params):
         size, stacks, scale = params
@@ -102,25 +102,25 @@ class Camera():
                 layer = pg.transform.rotate(temp_layers[0],angle)
 
 
-                tile_surface = pg.Surface((layer.get_width(),layer.get_height()/2+((stacks)*4)),pg.SRCALPHA)
-
-                for i in range(stacks*int(4/scale)):
-                    layer = temp_layers[i//int(4/scale)]
+                #tile_surface = pg.Surface((layer.get_width(),layer.get_height()/2+((stacks)*4)),pg.SRCALPHA)
+                ll = []
+                for surf in temp_layers:
+                    ##layer = temp_layers[i//int(4/scale)]
                     
-                    layer = pg.transform.rotate(layer,angle)
+                    layer = pg.transform.rotate(surf,angle)
 
                     w_s, h_s = layer.get_size()
 
-                    layer = pg.transform.scale(layer,(w_s,h_s/2))
+                    ll.append(pg.transform.scale(layer,(w_s,h_s/2)))
 
-                    tile_surface.blit(layer, (0,(stacks)*4-i))
+                    #tile_surface.blit(layer, (0,(stacks)*4-i))
 
-                w, h = tile_surface.get_size()
-                tile_surface = tile_surface.convert()
-                tile_surface.set_colorkey((0,0,0))
-                surfaces.append((tile_surface,h_s/2))
+                #w, h = tile_surface.get_size()
+                #tile_surface = tile_surface.convert()
+                #tile_surface.set_colorkey((0,0,0))
+                surfaces.append(ll)
 
-        return [surfaces, (stacks)*4, size]
+        return [surfaces, (stacks)*2, scale]
 
     def draw_map(self, trains, font):
         ground_color = pg.Color("#404040")
@@ -128,7 +128,7 @@ class Camera():
         #ground_color = pg.Color("#f7f1d2")
         #grid_color = pg.Color("#efe9cb")
 
-        tile_size = 256
+        tile_size = 128
         bm_pos = (int(self.pos[0])//tile_size,int(self.pos[1])//tile_size)
         chunk_pos = (bm_pos[0]//21, bm_pos[1]//21)
 
@@ -140,14 +140,15 @@ class Camera():
         a = int(5/(self.scale/2))
 
         millimetrovka = self.sprites["millimetrovka"][0]
-        m_tile_w, m_tile_h = [i for i in millimetrovka.get_size()]
-        millimetrovka = pg.transform.scale(millimetrovka,(m_tile_w, m_tile_h-4))
+        #m_tile_w, m_tile_h = [i for i in millimetrovka.get_size()]
+        #millimetrovka = pg.transform.scale(millimetrovka,(m_tile_w, m_tile_h-4))
         #m_tile_w, m_tile_h = [i*2 for i in millimetrovka.get_size()]
         #millimetrovka = pg.transform.scale(millimetrovka,(m_tile_w, m_tile_h-4))
         tracks = []
 
         draw_queue = []
         ap = self.translate_to((0,0))
+        max_ht = 90
 
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
 
@@ -163,24 +164,21 @@ class Camera():
                 #)
 
                 if f"{dx}:{dy}" in self.blockmap:
-                    tile_center = [(dx-dy)*180+ap[0], (dx+dy+1)*90+ ap[1]]
+                    tile_center = [(dx-dy)*90+ap[0], (dx+dy+1)*45+ ap[1]]
                     #tile_center = self.translate_to(((dx+0.5)*tile_size,(dy+0.5)*tile_size))
                     for tile in self.blockmap[f"{dx}:{dy}"]:
                         if tile in self.sprites:
                             tile_sprite = self.sprites[tile][0]
                             #tile_w, tile_h = [i for i in tile_sprite.get_size()]
-                            tile_w, tile_h = tile_sprite.get_size()
-                            orth = 90*self.scale
 
                             draw_queue.append([
-                                (dx*256+self.sprites[tile][2][0],dy*256+self.sprites[tile][2][1]),
                                 #round(tile_center[1]-m_tile_h//2-self.sprites[tile][1])-orth*(self.sprites[tile][2]-1),
-                                #((dx+dy+1)*90+self.sprites[tile][2]*90/128),
+                                ((dx+dy+1)*45),
                                 tile_sprite,
-                                (
-                                    round(tile_center[0]-tile_w//2),
-                                    round(tile_center[1]-m_tile_h//2-self.sprites[tile][1])
-                                )
+                                self.sprites[tile][2],
+                                self.sprites[tile][-1],
+                                tile_center,
+                                "block"
 
                             ])
 
@@ -245,30 +243,27 @@ class Camera():
                 #center_pos = self.translate_to([i*2 for i in train.pos])
 
                 #sprite = array_entry[0][angle][0] 
-                sprite = pg.transform.scale(array_entry[0][angle][0],(
-                    array_entry[0][angle][0].get_width()*2,
-                    array_entry[0][angle][0].get_height()*2)
-                )
                 
                 draw_queue.append([
                     #round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2),
-                    [
-                        train.pos[0]+abs(train.size[0]*math.sin(math.radians(train.angle)))/2+abs(train.size[1]*math.cos(math.radians(train.angle)))/2,
-                        train.pos[1]+abs(train.size[0]*math.cos(math.radians(train.angle)))/2+abs(train.size[1]*math.sin(math.radians(train.angle)))/2,
-                    ],
-                    sprite,
-                    (
-                    round(center_pos[0]-array_entry[0][angle][0].get_width()),
-                    round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2)
-                    )
+                    center_pos[1],
+                    array_entry[0][angle],
+                    array_entry[1],
+                    array_entry[-1],
+                    center_pos,
+                    "train"
                 ])
 
                 z.append([self.translate_to(train.bogeys[0].pos),self.translate_to([train.bogeys[0].pos[i]+50*train.bogeys[0].vectors[i] for i in [0,1]])])
                 z.append([self.translate_to(train.bogeys[1].pos),self.translate_to([train.bogeys[1].pos[i]+50*train.bogeys[1].vectors[i] for i in [0,1]])])
         
+        draw_queue = list(sorted(draw_queue,key=lambda x:x[0]))
 
-        for element in sorted(draw_queue,key=lambda x:x[0][1]+x[0][0]):#(x[0][0], x[0][1])):
-            screen.blit(element[1],element[2])
+        for i in range(max_ht):
+            for element in draw_queue:
+                if i < element[2]:
+                    sp = element[1][int(i//element[3])]
+                    screen.blit(sp,(element[4][0]-sp.get_width()/2,element[4][1]-sp.get_height()/2-i))
 
         draw_queue = []
         

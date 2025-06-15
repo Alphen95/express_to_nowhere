@@ -23,16 +23,16 @@ def create_rail(idt, start, end):
 
 class Rail:
     def __init__(self, identifier):
-        self.s_pos = None
-        self.s_axis = None
-        self.s_links = []
+        self.s_pos = None # голова рельсины
+        self.s_axis = None # ось [x/y] головы рельсины
+        self.s_links = [] # к кому голова рельсы коннектится
 
-        self.e_pos = None
-        self.e_axis = None
-        self.e_links = []
+        self.e_pos = None # хвост рельсины
+        self.e_axis = None # ось [x/y] хвоста рельсины
+        self.e_links = [] # к кому хвост рельсы коннектится
 
         self.identifier = identifier
-        self.discrete = 20
+        self.discrete = 9
 
     def build(self):
         ma_x = max(self.s_pos[0], self.e_pos[0]) # max x
@@ -93,6 +93,7 @@ class Rail:
 
     def render(self):
         self.points = []
+        self.draw_points = []
         self.angles = []
 
         if len(self.render_points) == 2:
@@ -161,5 +162,15 @@ class Rail:
 
         self.angles[1] = self.angles[1][::-1]
         self.vectors[1] = self.vectors[1][::-1]
+
+        scale = 90/128
+        for point in self.points:
+            x, y = point
+            
+            x *= scale
+            y *= scale
+            dx = ((x - y))
+            dy = ((x + y)*0.5)
+            self.draw_points.append((dx, dy))
         
                     
