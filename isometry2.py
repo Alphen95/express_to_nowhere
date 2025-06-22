@@ -52,7 +52,7 @@ class Camera():
 
         return (x, y)
 
-    def render_tile(self, img, params, overdraw):
+    def render_tile(self, img, params, overdraw, base_spin=0):
         stacks, offset, scale = params
         temp_layers = []
 
@@ -61,7 +61,7 @@ class Camera():
                 img.subsurface((128/scale*i,0,128/scale,128/scale))
             )
             temp_layers[-1] = pg.transform.scale(temp_layers[-1],(128,128))
-            temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45)
+            temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45-base_spin)
 
             w, h = temp_layers[-1].get_size()
 
@@ -122,7 +122,7 @@ class Camera():
 
         return [surfaces, (stacks)*2, scale]
 
-    def draw_map(self, trains, font):
+    def draw_map(self, trains, target):
         ground_color = pg.Color("#404040")
         grid_color = pg.Color("#505050")
         #ground_color = pg.Color("#f7f1d2")
@@ -132,7 +132,7 @@ class Camera():
         bm_pos = (int(self.pos[0])//tile_size,int(self.pos[1])//tile_size)
         chunk_pos = (bm_pos[0]//21, bm_pos[1]//21)
 
-        screen = pg.Surface([i/min(1,self.scale) for i in self.camera_size],pg.SRCALPHA).convert()
+        screen = target
         screen.set_colorkey((0,0,0))
         screen.fill(ground_color)
 
@@ -231,8 +231,8 @@ class Camera():
         z = []
 
         for train in trains:
-            if (21*256*(chunk_pos[0]-1) < train.pos[0] < 21*256*(chunk_pos[0]+2) and 
-                21*256*(chunk_pos[1]-1) < train.pos[1] < 21*256*(chunk_pos[1]+2) and
+            if (21*tile_size*(chunk_pos[0]-1) < train.pos[0] < 21*tile_size*(chunk_pos[0]+2) and 
+                21*tile_size*(chunk_pos[1]-1) < train.pos[1] < 21*tile_size*(chunk_pos[1]+2) and
                 train.type != None):
                 #рисуем
                 angle = round(train.angle//1) # угол//1 = инд. в массиве

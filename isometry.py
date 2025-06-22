@@ -5,9 +5,25 @@ import math
 #sqrt(2) = 1.4
 #stack_koef = 4
 
+def clamp(base, mn, mx):
+    return min(max(mn, base), mx)
+
+def draw_opaque_polygon(target, points, color, opacity):
+    px, py = [], []
+    for point in points:
+        px.append(point[0])
+        py.append(point[1])
+
+    w, h = max(px)-min(px), max(py)-min(py)
+    s = pg.Surface((w,h))
+    s.set_alpha(opacity)
+    pg.draw.polygon(s, color, [(i[0]-min(px), i[1]-min(py)) for i in points])
+    s.set_colorkey((0,0,0))
+    target.blit(s, (min(px), min(py)))
+
 class Camera():
     def __init__(self, camera_size):
-        self.pos = [0,0]
+        self.pos = [0,0,0]
         self.camera_size = camera_size
         self.debug = False
         self.scale = 1
@@ -16,18 +32,37 @@ class Camera():
         self.train_sprites = {}
 
         self.blockmap = {}
+        self.undermap = {}
 
         self.rail_nodes = {}
         self.tracks = {}
         
+        self.chunks = {
+            "active": False,
+            "size": 0,
+            "data":{
+
+            }
+        }
+
         self.z = pg.Surface(camera_size)
         self.z.fill((128,128,128))
         self.z.set_alpha(64)
         self.flag = False
 
+    def chunk(self, chunk_size):
+        self.chunks["active"] = True
+        self.chunks["size"] = chunk_size
+
+        for block in self.blockmap:
+            x, y = map(int, block.split(":"))
+            chx, chy = int(x//chunk_size), int(y//chunk_size)
+
+            if (chx, chy) not in self.chunks["data"]: self.chunks["data"][(chx, chy)] = []
+
 
     def translate_to(self, coordinates):
-        x, y = coordinates
+        x, y = coordinates[:2]
         x -= self.pos[0]
         y -= self.pos[1]
 
@@ -36,8 +71,8 @@ class Camera():
         y *= scale
         dx = ((x - y))
         dy = ((x + y)*0.5)
-        dx += (self.camera_size[0]/min(1,self.scale))/2
-        dy += (self.camera_size[1]/min(1,self.scale))/2
+        dx += self.camera_size[0]/2
+        dy += self.camera_size[1]/2
 
         return (int(dx), int(dy))
 
@@ -53,7 +88,7 @@ class Camera():
 
         return (x, y)
 
-    def render_tile(self, img, params, overdraw):
+    def render_tile(self, img, params, overdraw, add_angle = 0):
         stacks, offset, scale = params
         temp_layers = []
 
@@ -62,7 +97,7 @@ class Camera():
                 img.subsurface((128/scale*i,0,128/scale,128/scale))
             )
             temp_layers[-1] = pg.transform.scale(temp_layers[-1],(128,128))
-            temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45)
+            temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45-add_angle)
 
             w, h = temp_layers[-1].get_size()
 
@@ -116,13 +151,14 @@ class Camera():
                     tile_surface.blit(layer, (0,(stacks)*4-i))
 
                 w, h = tile_surface.get_size()
+                tile_surface = pg.transform.scale(tile_surface, (w*2, h*2))
                 tile_surface = tile_surface.convert()
                 tile_surface.set_colorkey((0,0,0))
                 surfaces.append((tile_surface,h_s/2))
 
         return [surfaces, (stacks)*4, size]
 
-    def draw_map(self, trains, font):
+    def draw_map(self, trains, disp):
         ground_color = pg.Color("#404040")
         grid_color = pg.Color("#505050")
         #ground_color = pg.Color("#f7f1d2")
@@ -132,18 +168,15 @@ class Camera():
         bm_pos = (int(self.pos[0])//tile_size,int(self.pos[1])//tile_size)
         chunk_pos = (bm_pos[0]//21, bm_pos[1]//21)
 
-        screen = pg.Surface([i/min(1,self.scale) for i in self.camera_size],pg.SRCALPHA).convert()
+        screen = disp
         screen.set_colorkey((0,0,0))
         screen.fill(ground_color)
 
         cnt = 0
-        a = int(5/(self.scale/2))
+        a = 10
 
-        millimetrovka = self.sprites["millimetrovka"][0]
-        m_tile_w, m_tile_h = [i for i in millimetrovka.get_size()]
-        millimetrovka = pg.transform.scale(millimetrovka,(m_tile_w, m_tile_h-4))
-        #m_tile_w, m_tile_h = [i*2 for i in millimetrovka.get_size()]
-        #millimetrovka = pg.transform.scale(millimetrovka,(m_tile_w, m_tile_h-4))
+        m_tile_w = 360
+        m_tile_h = 180
         tracks = []
 
         draw_queue = []
@@ -152,25 +185,17 @@ class Camera():
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
 
             for dx in range(bm_pos[0]-a,bm_pos[0]+a):
+                bcrd = f"{dx}:{dy}:{round(self.pos[2]/tile_size)}"
+                #print(bcrd, self.pos[2])
 
 
+                crdb = self.translate_to((dx*tile_size, dy*tile_size))
 
-                #screen.blit(millimetrovka,
-                #    (
-                #        round(tile_center[0]-m_tile_w//2),
-                #        round(tile_center[1]-m_tile_h//2)
-                #    )
-                #)
-
-                if f"{dx}:{dy}" in self.blockmap:
-                    tile_center = [(dx-dy)*180+ap[0], (dx+dy+1)*90+ ap[1]]
-                    #tile_center = self.translate_to(((dx+0.5)*tile_size,(dy+0.5)*tile_size))
-                    for tile in self.blockmap[f"{dx}:{dy}"]:
+                if bcrd in self.blockmap:
+                    tile_center = [crdb[0], crdb[1]+90]
+                    for tile in self.blockmap[bcrd]:
                         if tile in self.sprites:
                             tile_sprite = self.sprites[tile][0]
-                            #tile_w, tile_h = [i for i in tile_sprite.get_size()]
-                            tile_w, tile_h = tile_sprite.get_size()
-                            orth = 90*self.scale
 
                             draw_queue.append([
                                 (dx*256+self.sprites[tile][2][0],dy*256+self.sprites[tile][2][1]),
@@ -178,14 +203,28 @@ class Camera():
                                 #((dx+dy+1)*90+self.sprites[tile][2]*90/128),
                                 tile_sprite,
                                 (
-                                    round(tile_center[0]-tile_w//2),
+                                    round(tile_center[0]-m_tile_w//2),
                                     round(tile_center[1]-m_tile_h//2-self.sprites[tile][1])
                                 )
 
                             ])
 
-                if f"{dx}:{dy}" in self.rail_nodes:
-                    for track in self.rail_nodes[f"{dx}:{dy}"]["x"][0]+self.rail_nodes[f"{dx}:{dy}"]["x"][1]+self.rail_nodes[f"{dx}:{dy}"]["y"][0]+self.rail_nodes[f"{dx}:{dy}"]["y"][1]:
+                
+                if bcrd in self.undermap:
+                    drc = (crdb[0]-180, crdb[1]-4)
+                    if self.undermap[bcrd] == "base":
+                        screen.blit(self.sprites["under_base"][0], drc)
+                    elif self.undermap[bcrd] == "corner_a":
+                        screen.blit(self.sprites["under_crna"][0], drc)
+                    elif self.undermap[bcrd] == "corner_b":
+                        screen.blit(self.sprites["under_crnb"][0], drc)
+                    elif self.undermap[bcrd] == "corner_c":
+                        screen.blit(self.sprites["under_crnc"][0], drc)
+                    elif self.undermap[bcrd] == "corner_d":
+                        screen.blit(self.sprites["under_crnd"][0], drc)
+
+                if bcrd in self.rail_nodes:
+                    for track in self.rail_nodes[bcrd]["x"][0]+self.rail_nodes[bcrd]["x"][1]+self.rail_nodes[bcrd]["y"][0]+self.rail_nodes[bcrd]["y"][1]:
                         tracks.append(track)
 
                 cnt+=1
@@ -199,13 +238,70 @@ class Camera():
 
                     pg.draw.lines(screen, (0,0,0),True,(p1,p2,p3,p4),2)
 
-                    #k = font.render(f"{dx}:{dy}",True,(0,0,255))
+                    #k = font.render(bcrd,True,(0,0,255))
                     #screen.blit(k,(tile_center[0]-k.get_width()/2,tile_center[1]-k.get_height()))
                     #k = font.render(f"{cnt}",True,(0,0,255))
                     #screen.blit(k,(tile_center[0]-k.get_width()/2,tile_center[1]))
                 
-            
+        for track in tracks:
+            inf = self.tracks[track]
+            l_stack = ["",""]
+            r_stack = ["", ""]
+            for i in range(len(inf.raw_up_l)):
+                l_stack = [l_stack[1], ""]
+                r_stack = [r_stack[1], ""]
 
+                l_p = inf.underlay_points_l[i]
+                l_stack[1] = ((
+                    l_p[0]+ap[0],
+                    l_p[1]+ap[1],
+                    l_p[2]
+                ))
+                
+                r_p = inf.underlay_points_r[i]
+                r_stack[1] = ((
+                    r_p[0]+ap[0],
+                    r_p[1]+ap[1],
+                    r_p[2]
+                ))
+
+                if l_stack[0] != "":
+                    dh = abs((l_stack[0][2]+l_stack[1][2])/2-self.pos[2])
+                    #if dh != 0 and dh <= tile_size/2:
+                    #    draw_opaque_polygon(screen, l_stack+r_stack[::-1], (96,96,96), 255*(1-dh*2/tile_size))
+                    #elif dh == 0:
+                    #    pg.draw.polygon(screen, (96,96,96), [i[:2] for i in l_stack+r_stack[::-1]])
+                    if dh <= tile_size/2:
+                        pg.draw.polygon(screen, [int(clamp(80-16*(dh*2/tile_size), 64, 80))]*3, [i[:2] for i in l_stack+r_stack[::-1]])
+
+        for track in tracks:
+            stack = ["",""]
+            for point in self.tracks[track].l_track:
+                #point = [i*2 for i in point]
+                point = [point[0]+ap[0], point[1]+ ap[1], point[2]]
+                stack = [stack[1],point]
+                if stack[0] != "":
+                    dh = abs((stack[0][2]+stack[1][2])/2-self.pos[2])
+                    pg.draw.line(screen,[int(clamp(16+48*(dh*2/tile_size), 16, 64))]*3,
+                        stack[0][:2],
+                        stack[1][:2],
+                        int(4)
+                    )
+
+            stack = ["",""]
+            for point in self.tracks[track].r_track:
+                #point = [i*2 for i in point]
+                point = [point[0]+ap[0], point[1]+ ap[1], point[2]]
+                stack = [stack[1],point]
+                if stack[0] != "":
+                    dh = abs((stack[0][2]+stack[1][2])/2-self.pos[2])
+                    pg.draw.line(screen,[int(clamp(16+48*(dh*2/tile_size), 16, 64))]*3,
+                        stack[0][:2],
+                        stack[1][:2],
+                        int(4)
+                    )
+
+        z = []
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
             p1 = self.translate_to(((bm_pos[0]-a)*tile_size,dy*tile_size))
             p2 = self.translate_to(((bm_pos[0]+a)*tile_size,dy*tile_size))
@@ -215,22 +311,6 @@ class Camera():
             p1 = self.translate_to((dx*tile_size,(bm_pos[1]-a)*tile_size))
             p2 = self.translate_to((dx*tile_size,(bm_pos[1]+a)*tile_size))
             pg.draw.line(screen, grid_color,p1,p2,4)
-            
-
-        for track in tracks:
-            stack = ["",""]
-            for point in self.tracks[track].draw_points:
-                #point = [i*2 for i in point]
-                point = [point[0]+ap[0], point[1]+ ap[1]]
-                stack = [stack[1],point]
-                if stack[0] != "":
-                    pg.draw.line(screen,(16,16,16),
-                        stack[0],
-                        stack[1],
-                        int(8)
-                    )
-
-        z = []
 
         for train in trains:
             if (21*256*(chunk_pos[0]-1) < train.pos[0] < 21*256*(chunk_pos[0]+2) and 
@@ -246,9 +326,11 @@ class Camera():
 
                 #sprite = array_entry[0][angle][0] 
                 sprite = pg.transform.scale(array_entry[0][angle][0],(
-                    array_entry[0][angle][0].get_width()*2,
-                    array_entry[0][angle][0].get_height()*2)
+                    array_entry[0][angle][0].get_width(),
+                    array_entry[0][angle][0].get_height())
                 )
+                dh = abs(train.pos[2]-self.pos[2])
+                sprite.set_alpha(clamp(255*(1-dh*2/tile_size), 0,255))
                 
                 draw_queue.append([
                     #round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2),
@@ -258,13 +340,10 @@ class Camera():
                     ],
                     sprite,
                     (
-                    round(center_pos[0]-array_entry[0][angle][0].get_width()),
+                    round(center_pos[0]-array_entry[0][angle][0].get_width()//2),
                     round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2)
                     )
                 ])
-
-                z.append([self.translate_to(train.bogeys[0].pos),self.translate_to([train.bogeys[0].pos[i]+50*train.bogeys[0].vectors[i] for i in [0,1]])])
-                z.append([self.translate_to(train.bogeys[1].pos),self.translate_to([train.bogeys[1].pos[i]+50*train.bogeys[1].vectors[i] for i in [0,1]])])
         
 
         for element in sorted(draw_queue,key=lambda x:x[0][1]+x[0][0]):#(x[0][0], x[0][1])):

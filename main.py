@@ -5,12 +5,12 @@ import os
 import time
 import random
 import isometry as isometry
-import rails2d
+import rails_iso as rails_m
 import train
 import json
 
 win_size = (0,0)#(800,600)
-version = "0.2.4 Kennedy & Union Lines"
+version = "0.2.6 z-levels testing"
 
 
 pg.init()
@@ -21,10 +21,11 @@ dfont = pg.font.Font("res/font.ttf",28)
 sfont = pg.font.Font("res/font.ttf",24)
 
 win_size = screen.get_size()
-win_size = (win_size[0]+100,win_size[1]+100)
+win_size = (win_size[0],win_size[1])
 
 working = True
 tile_size = 256
+ct, fg, bg = (tile_size/2, tile_size/2), (tile_size, tile_size), (0,0)
 
 tile_sheet = pg.image.load("res/tiles.png")
 el_s_sheet = pg.image.load("res/el_s.png")
@@ -33,24 +34,25 @@ plt1_sheet = pg.image.load("res/plt1.png")
 plt3_sheet = pg.image.load("res/plt3.png")
 
 player = isometry.Camera(win_size)
-player.sprites["millimetrovka"] = player.render_tile(tile_sheet.subsurface(0,0,32,32),(1,0,4),1)
-player.sprites["house_absc_a"] = player.render_tile(tile_sheet.subsurface(0,32,1280,32),(40,0,4),1)
-player.sprites["house_absc_b"] = player.render_tile(tile_sheet.subsurface(0,64,1280,32),(40,0,4),1)
-player.sprites["house_absc_c"] = player.render_tile(tile_sheet.subsurface(0,96,1280,32),(40,0,4),1)
+player.sprites["under_base"] = player.render_tile(tile_sheet.subsurface(1248,128,32,32),(1,0,4),0)
+player.sprites["under_crna"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,0)
+player.sprites["under_crnb"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,90)
+player.sprites["under_crnc"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,180)
+player.sprites["under_crnd"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,270)
 
 player.sprites["rock"] = player.render_tile(tile_sheet.subsurface(0,128,1280,32),(32,0,4),1)
-player.sprites["platform"] = player.render_tile(tile_sheet.subsurface(0,160,96,32),(3,0,4),(tile_size/2, tile_size/2))
-player.sprites["platform_e_x_l"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),(tile_size*1,tile_size*1))
-player.sprites["platform_e_x_r"] = player.render_tile(tile_sheet.subsurface(0,224,96,32),(3,0,4),(tile_size*0,tile_size*0))
-player.sprites["platform_e_y_r"] = player.render_tile(tile_sheet.subsurface(0,256,96,32),(3,0,4),(tile_size*1,tile_size*1))
-player.sprites["platform_e_y_l"] = player.render_tile(tile_sheet.subsurface(0,288,96,32),(3,0,4),(tile_size*0,tile_size*0))
-player.sprites["platform_s_a"] = player.render_tile(tile_sheet.subsurface(96,192,448,32),(14,0,4),(tile_size*0.5,tile_size*0.5))
-player.sprites["platform_s_b"] = player.render_tile(tile_sheet.subsurface(96,224,448,32),(14,0,4),(tile_size*0.5,tile_size*0.5))
-player.sprites["platform_s_c"] = player.render_tile(tile_sheet.subsurface(96,256,448,32),(14,0,4),(tile_size*0.5,tile_size*0.5))
-player.sprites["platform_s_d"] = player.render_tile(tile_sheet.subsurface(96,288,448,32),(14,0,4),(tile_size*0.5,tile_size*0.5))
+player.sprites["platform"] = player.render_tile(tile_sheet.subsurface(0,160,96,32),(3,0,4),ct)
+player.sprites["platform_e_x_l"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),fg,0)
+player.sprites["platform_e_x_r"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),bg,180)
+player.sprites["platform_e_y_r"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),fg,270)
+player.sprites["platform_e_y_l"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),bg,90)
+player.sprites["platform_s_a"] = player.render_tile(tile_sheet.subsurface(96,192,448,32),(14,0,4),ct,0)
+player.sprites["platform_s_b"] = player.render_tile(tile_sheet.subsurface(96,224,448,32),(14,0,4),ct,180)
+player.sprites["platform_s_c"] = player.render_tile(tile_sheet.subsurface(96,256,448,32),(14,0,4),ct,90)
+player.sprites["platform_s_d"] = player.render_tile(tile_sheet.subsurface(96,288,448,32),(14,0,4),ct,270)
 
-player.train_sprites["Sv_p"] = player.render_train(el_s_sheet,((32,98),28 ,2))
-player.train_sprites["Sv_m"] = player.render_train(el_sp_sheet,((32,98),32 ,2))
+#player.train_sprites["Sv_p"] = player.render_train(el_s_sheet,((32,98),28 ,2))
+#player.train_sprites["Sv_m"] = player.render_train(el_sp_sheet,((32,98),32 ,2))
 player.train_sprites["plt1"] = player.render_train(plt1_sheet,((32,122),21 ,2))
 player.train_sprites["plt3"] = player.render_train(plt3_sheet,((32,97),21 ,2))
 
@@ -58,9 +60,10 @@ player.blockmap["-20:-1"] = ["rock"]
 
 with open("world.json") as f:
     q = json.loads(f.read())
-    rail_nodes, blockmap, stations = q
+    rail_nodes, blockmap, underay_map, stations = q
 
 player.blockmap = blockmap
+player.undermap = underay_map
 
 st_tilemap = {}
 
@@ -76,27 +79,28 @@ switches = {
 tracks = {}
 
 for node in rail_nodes:
-    sx, sy = [(i+0.5)*tile_size for i in map(int,node.split(":"))]
+    bx, by, bz = map(int, node.split(":"))
+    sx, sy, sz = (bx+0.5)*tile_size, (by+0.5)*tile_size, bz*tile_size
     for axis in ["x","y"]:
         for rail_id in rail_nodes[node][axis][1]:
-            if rail_id not in tracks: tracks[rail_id] = rails2d.Rail(rail_id)
+            if rail_id not in tracks: tracks[rail_id] = rails_m.Rail(rail_id)
             if tracks[rail_id].s_pos == None:
-                tracks[rail_id].s_pos = (sx,sy)
+                tracks[rail_id].s_pos = (sx,sy,sz)
                 tracks[rail_id].s_axis = axis
                 tracks[rail_id].s_links = rail_nodes[node][axis][0]
             else:
-                tracks[rail_id].e_pos = (sx,sy)
+                tracks[rail_id].e_pos = (sx,sy,sz)
                 tracks[rail_id].e_axis = axis
                 tracks[rail_id].e_links = rail_nodes[node][axis][0]
 
         for rail_id in rail_nodes[node][axis][0]:
-            if rail_id not in tracks: tracks[rail_id] = rails2d.Rail(rail_id)
+            if rail_id not in tracks: tracks[rail_id] = rails_m.Rail(rail_id)
             if tracks[rail_id].s_pos == None:
-                tracks[rail_id].s_pos = (sx,sy)
+                tracks[rail_id].s_pos = (sx,sy,sz)
                 tracks[rail_id].s_axis = axis
                 tracks[rail_id].s_links = rail_nodes[node][axis][1]
             else:
-                tracks[rail_id].e_pos = (sx,sy)
+                tracks[rail_id].e_pos = (sx,sy,sz)
                 tracks[rail_id].e_axis = axis
                 tracks[rail_id].e_links = rail_nodes[node][axis][1]
 
@@ -120,7 +124,7 @@ generation_params = {
 
 class Dummy:
     def __init__(self, pos, size, angle,type, bogeys):
-        self.pos = (pos[0],pos[1])
+        self.pos = [pos[0],pos[1],pos[2]]
         self.size = size
         self.bogeys = bogeys
         self.angle = (angle-90)%360
@@ -130,15 +134,42 @@ a = pg.Surface(win_size, pg.SRCALPHA)
 a.fill((64,64,64,32))
 
 route_map = {
-    None:[(10,10,10),(255,255,255),"NIS"],
+    None:[(10,10,10),(255,255,255),"X"],
+
+    "c_old":[(75,199,123),(1,1,1),"CC"],
+
+    "a":[(9,59,93),(255,255,255),"A"],
+    "c":[(9,59,93),(255,255,255),"C"],
+    "h":[(9,59,93),(255,255,255),"H"],
+
+    "b":[(242,99,35),(255,255,255),"B"],
+    "d":[(242,99,35),(255,255,255),"D"],
+
+    "e":[(31,65,155),(255,255,255),"E"],
+    "k":[(31,65,155),(255,255,255),"K"],
+
+    "1":[(238,51,48),(255,255,255),"1"],
+    "2":[(238,51,48),(255,255,255),"2"],
+    "3":[(238,51,48),(255,255,255),"3"],
+    "9":[(238,51,48),(255,255,255),"9"],
+    
+    "4":[(14,148,71),(255,255,255),"4"],
+    "5":[(14,148,71),(255,255,255),"5"],
+    "6":[(14,148,71),(255,255,255),"6"],
+
+    "8":[(73,218,247),(255,255,255),"8"],
+
     "7":[(172,66,152),(255,255,255),"7"],
     "11":[(172,66,152),(255,255,255),"11"],
 }
+#[("plt3",False,True,True),("plt3",True,True,True),("plt3",False,True,True),("plt3",True,True,True)] 388
+#[("plt1",False,True,True),("plt1",True,True,True),("plt1",False,True,True),("plt1",True,True,True)] 488
 
 consists = []
-consists.append(train.spawn_train([("plt3",False,True,True),("plt3",True,True,True),("plt3",False,True,True),("plt3",True,True,True)],1032, (388,64), font))
+consists.append(train.spawn_train([("plt1",False,True,True),("plt1",True,True,True)],59, (488,64), font))
 consists[-1].velocity_vector = 1
-consists[-1].route = "11"
+consists[-1].route = "8"
+follow = True
 
 while working:
     train.switches = switches
@@ -153,9 +184,12 @@ while working:
             pressed.append(evt.key)
 
             if evt.key == pg.K_d: player.debug = not player.debug
-            elif evt.key == pg.K_EQUALS: player.scale += 0.5
+            elif evt.key == pg.K_EQUALS: player.scale *=2
             elif evt.key == pg.K_MINUS: player.scale /= 2
-            elif evt.key == pg.K_q: player.flag = not player.flag
+            elif evt.key == pg.K_q and not follow: player.pos[2] -= tile_size
+            elif evt.key == pg.K_e and not follow: player.pos[2] += tile_size
+            
+            if evt.key == pg.K_p: follow = not follow
 
             if evt.key == pg.K_z: consists[-1].velocity_vector = [0,-1,1][consists[-1].velocity_vector]
         elif evt.type == pg.MOUSEBUTTONDOWN:
@@ -173,9 +207,10 @@ while working:
             occupied_tracks.append(tr.occupied_tracks[0])
             occupied_tracks.append(tr.occupied_tracks[1])
 
-    player.pos = temp_trains[0 if consists[-1].velocity_vector == -1 else -1].pos
-    disp = player.draw_map(temp_trains,font)
-    screen.blit(disp,(screen.get_width()/2-disp.get_width()/2,screen.get_height()/2-disp.get_height()/2))
+    if follow: player.pos = temp_trains[0 if consists[-1].velocity_vector == -1 else -1].pos
+    
+    disp = player.draw_map(temp_trains,screen)
+    #screen.blit(disp,(screen.get_width()/2-disp.get_width()/2,screen.get_height()/2-disp.get_height()/2))
     screen.blit(a,(0,0))
     player_block = [int(i//tile_size) for i in player.pos]
     player_block = (player_block[0], player_block[1])
@@ -239,36 +274,28 @@ while working:
 
     kbd = pg.key.get_pressed()
 
-    screen.blit(consists[-1].internal.render_graphics([i-100 for i in win_size], "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released]),(0,0))
+    if follow:
+        screen.blit(consists[-1].internal.render_graphics(screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released]),(0,0))
     consists[-1].switch = kbd[pg.K_LALT]
 
     fps = round(clock.get_fps())
     speed = 16
 
-    '''if kbd[pg.K_DOWN]: 
-        player.pos[0] += speed
-        player.pos[1] += speed
-    elif kbd[pg.K_UP]: 
-        player.pos[0] -= speed
-        player.pos[1] -= speed
-        
-    if kbd[pg.K_RIGHT]: 
-        player.pos[0] += speed
-        player.pos[1] -= speed
-    if kbd[pg.K_LEFT]: 
-        player.pos[0] -= speed
-        player.pos[1] += speed
+    if not follow:
+        if kbd[pg.K_DOWN]: 
+            player.pos[0] += speed
+            player.pos[1] += speed
+        elif kbd[pg.K_UP]: 
+            player.pos[0] -= speed
+            player.pos[1] -= speed
+            
+        if kbd[pg.K_RIGHT]: 
+            player.pos[0] += speed
+            player.pos[1] -= speed
+        if kbd[pg.K_LEFT]: 
+            player.pos[0] -= speed
+            player.pos[1] += speed
 
-    if kbd[pg.K_LALT]:
-        switches = {
-            "-10:-2":[[],[102]],
-            "-5:-1":[[102],[106]],
-        }
-    else:
-        switches = {
-            "-10:-2":[[],[101]],
-            "-5:-1":[[103],[105]],
-        }'''
 
     z = [
         version,

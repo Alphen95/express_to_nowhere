@@ -31,10 +31,18 @@ def spawn_train(trtype, track, trainlen, font):
     if track in tracks:
         if tracks[track].s_axis == "x" == tracks[track].e_axis and tracks[track].s_pos[1] == tracks[track].e_pos[1]:
             print("vertical (x axis) track")
-            pos = [(tracks[track].s_pos[0]+tracks[track].e_pos[0])/2-trainlen[0]*len(trtype)/2,(tracks[track].s_pos[1]+tracks[track].e_pos[1])/2]
+            pos = [
+                (tracks[track].s_pos[0]+tracks[track].e_pos[0])/2-trainlen[0]*len(trtype)/2,
+                (tracks[track].s_pos[1]+tracks[track].e_pos[1])/2,
+                tracks[track].s_pos[2]
+            ]
         elif tracks[track].s_axis == "y" == tracks[track].e_axis and tracks[track].s_pos[0] == tracks[track].e_pos[0]:
             print("horizontal (y axis) track")
-            pos = [(tracks[track].s_pos[0]+tracks[track].e_pos[0])/2,(tracks[track].s_pos[1]+tracks[track].e_pos[1])/2-trainlen[0]*len(trtype)/2]
+            pos = [
+                (tracks[track].s_pos[0]+tracks[track].e_pos[0])/2,
+                (tracks[track].s_pos[1]+tracks[track].e_pos[1])/2-trainlen[0]*len(trtype)/2,
+                tracks[track].s_pos[2]
+            ]
         else:
             print(f"Track {track} is not straight!")
     else:
@@ -60,7 +68,7 @@ class Bogey:
         self.ride_mode = 0
 
         self.is_alive = True
-        self.debug = True
+        self.debug = False
         self.identifier = identifier
 
         self.front = False
@@ -86,7 +94,7 @@ class Bogey:
 
                 stack = ["",""]
                 angle_cone = "x" if (45 <= self.angle%360 <= 135 or 225 <= self.angle%360 <= 315) else "y"
-
+                
                 for enum, point in enumerate(c_track.points):
                     stack = [stack[1],point]
                     if stack[0] != "":
@@ -178,10 +186,12 @@ class Bogey:
             time.sleep(1/120)
 
 class Train:
-    def __init__(self, pos, type, cur_track, bg1, bg2,identifier):
+    def __init__(self, pos, type, cur_track, bg1, bg2,identifier, size):
         self.pos = pos # абсолютная мировая
         self.angle = 0
         self.flipped = False
+        self.size = size
+        self.block_coord = [0,0]
 
         self.velocity = 0
         self.velocity_vector = 0
@@ -205,7 +215,8 @@ class Train:
     def cycle(self, tick):
         self.pos = [
             round((self.bogeys[0].pos[0]+self.bogeys[1].pos[0])/2,2),
-            round((self.bogeys[0].pos[1]+self.bogeys[1].pos[1])/2,2)
+            round((self.bogeys[0].pos[1]+self.bogeys[1].pos[1])/2,2),
+            max(self.bogeys[0].pos[2],self.bogeys[1].pos[2])
         ]
 
         if self.bogeys[0].pos[1]-self.bogeys[1].pos[1] == 0 or self.bogeys[0].pos[0]-self.bogeys[1].pos[0] == 0:
@@ -281,17 +292,21 @@ class Consist:
 
         self.bogeys = []
 
-
+        print(pos[2])
         for i in range(len(trtype)+1):
             self.bogeys.append(Bogey(
-                [pos[0]+(size[0]*i-int(size[0]/2))*(drct),pos[1]+(size[0]*i-int(size[0]/2))*(1-drct)],
+                [
+                    pos[0]+(size[0]*i-int(size[0]/2))*(drct),
+                    pos[1]+(size[0]*i-int(size[0]/2))*(1-drct),
+                    pos[2]
+                ],
                 cur_track,
                 f"consist_x_bogey_{i}"
             ))
         
         for i,e in enumerate(trtype):
             self.trains.append(Train(
-                (pos[0]+size[0]*i,pos[1]),e[0],cur_track,self.bogeys[i],self.bogeys[i+1],f"carriage_{i}"
+                (pos[0]+size[0]*i,pos[1]),e[0],cur_track,self.bogeys[i],self.bogeys[i+1],f"carriage_{i}", size
             ))
             if e[1]: self.trains[-1].flipped = True
             if e[2]: self.motorised += 1
@@ -339,11 +354,16 @@ class Consist:
             for i, bogey in enumerate(self.bogeys):
                 if bogey.track != None:
                     bogey.velocity_vector = self.velocity_vector
+                    bogey.track_seq = self.track_seq[::(self.velocity_vector if self.velocity_vector != 0 else 1)]
+                    bogey.switch_state = 1 if self.switch else 0
+
                     bogey.pos[0] += self.pixel_velocity*bogey.vectors[0]*self.velocity_vector*self.base_reverse/tick
                     bogey.pos[1] += self.pixel_velocity*bogey.vectors[1]*self.velocity_vector*self.base_reverse/tick
+                    bogey.pos[2] += self.pixel_velocity*bogey.vectors[2]*self.velocity_vector*self.base_reverse/tick
 
                     bogey.pos[0] = round(bogey.pos[0],2)
                     bogey.pos[1] = round(bogey.pos[1],2)
+                    bogey.pos[2] = round(bogey.pos[2],2)
 
                     if bogey.angle in [90,270] and (bogey.pos[1]//256+0.6)*256 >= bogey.pos[1] >= (bogey.pos[1]//256+0.4)*256:
                         bogey.pos[1] = (bogey.pos[1]//256+0.5)*256
@@ -353,9 +373,6 @@ class Consist:
                     #self.occupied_tracks[i] = bogey.track
 
             for train in self.trains:
-                for bg in train.bogeys:
-                    bg.track_seq = self.track_seq[::(self.velocity_vector if self.velocity_vector != 0 else 1)]
-                    bg.switch_state = 1 if self.switch else 0
                 train.velocity = self.pixel_velocity
                 train.velocity_vector = self.velocity_vector
                 train.cycle(tick)
@@ -373,7 +390,7 @@ class Consist:
         self.acceleration = traction_force/self.mass
         self.velocity += self.acceleration/tick
         self.velocity = max(0, self.velocity)
-        self.pixel_velocity = round(self.velocity*25,2)#round(self.velocity*21,2)
+        self.pixel_velocity = round(self.velocity*30,2)#round(self.velocity*21,2)
 
         self.internal.axial_speed = self.velocity/self.wheel_radius*self.reductional_coef
 

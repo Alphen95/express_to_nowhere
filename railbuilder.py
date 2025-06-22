@@ -2,7 +2,7 @@
 
 import pygame as pg
 import math
-import rails2d
+import rails_iso as rails_m
 import json
 
 win_size = (0,0)
@@ -20,38 +20,54 @@ select = 0
 
 with open("world.json") as f:
     q = json.loads(f.read())
-    rail_nodes, blockmap, stations = q
+    rail_nodes, blockmap, underlay_map, stations = q
 
 tracks = {
 
 }
 
+def draw_opaque_polygon(target, points, color, opacity):
+    px, py = [], []
+    for point in points:
+        px.append(point[0])
+        py.append(point[1])
+
+    w, h = max(px)-min(px), max(py)-min(py)
+    s = pg.Surface((w,h))
+    s.set_alpha(opacity)
+    pg.draw.polygon(s, color, [(i[0]-min(px), i[1]-min(py)) for i in points])
+    s.set_colorkey((0,0,0))
+    target.blit(s, (min(px), min(py)))
+
+
 for node in rail_nodes:
-    sx, sy = [(i+0.5)*tile_size for i in map(int,node.split(":"))]
+    bx, by, bz = map(int, node.split(":"))
+    sx, sy, sz = (bx+0.5)*tile_size, (by+0.5)*tile_size, bz*tile_size
     for axis in ["x","y"]:
         for rail_id in rail_nodes[node][axis][1]:
-            if rail_id not in tracks: tracks[rail_id] = rails2d.Rail(rail_id)
+            if rail_id not in tracks: tracks[rail_id] = rails_m.Rail(rail_id)
             if tracks[rail_id].s_pos == None:
-                tracks[rail_id].s_pos = (sx,sy)
+                tracks[rail_id].s_pos = (sx,sy,sz)
                 tracks[rail_id].s_axis = axis
                 tracks[rail_id].s_links = rail_nodes[node][axis][0]
             else:
-                tracks[rail_id].e_pos = (sx,sy)
+                tracks[rail_id].e_pos = (sx,sy,sz)
                 tracks[rail_id].e_axis = axis
                 tracks[rail_id].e_links = rail_nodes[node][axis][0]
 
         for rail_id in rail_nodes[node][axis][0]:
-            if rail_id not in tracks: tracks[rail_id] = rails2d.Rail(rail_id)
+            if rail_id not in tracks: tracks[rail_id] = rails_m.Rail(rail_id)
             if tracks[rail_id].s_pos == None:
-                tracks[rail_id].s_pos = (sx,sy)
+                tracks[rail_id].s_pos = (sx,sy,sz)
                 tracks[rail_id].s_axis = axis
                 tracks[rail_id].s_links = rail_nodes[node][axis][1]
             else:
-                tracks[rail_id].e_pos = (sx,sy)
+                tracks[rail_id].e_pos = (sx,sy,sz)
                 tracks[rail_id].e_axis = axis
                 tracks[rail_id].e_links = rail_nodes[node][axis][1]
 
 for rail_id in tracks:
+    tracks[rail_id].ud = tile_size//2+2
     tracks[rail_id].build()
 
 
@@ -91,93 +107,110 @@ pg.draw.polygon(directional_prism,(colors[4]),[
 
 directional_prism.set_alpha(128)
 
-
 working = True
-pos = [0,0]
-m_block = [14,88]
+pos = [0,0,0]
+m_block = [14,88,1488]
 old_m_pos = (0,0)
+
+underlay_blocks = ["base", "corner_a", "corner_b", "corner_c", "corner_d"]
+
+mode = "underlay"
 
 while working:
     if cur_stat+1 > len(stations):
-        stations.append([(0,0), (1,1), "unnamed", "lines"])
+        stations.append([(0,0,0), (1,1,0), "unnamed", "lines"])
 
     clicked = False
     released = False
     pressed = []
     screen.fill((240,240,240))
 
-    cam_pos = (pos[0]//tile_size, pos[1]//tile_size)
+    cam_pos = (pos[0]//tile_size, pos[1]//tile_size, pos[2]//tile_size)
     sw, sh = screen.get_size()
     rails = []
     az = pg.Surface([tile_size]*2)
     az.fill((240,0,0))
     az.set_alpha(64)
-    ax, ay = stations[cur_stat][0]
-    bx, by = stations[cur_stat][1]
+    ax, ay, q = stations[cur_stat][0]
+    bx, by, q = stations[cur_stat][1]
+
 
     for ty in range(-tiles_disp[1],tiles_disp[1]+1):
         for tx in range(-tiles_disp[0],tiles_disp[0]+1):
             block_corner = (sw/2-(tx*tile_size-pos[1]%tile_size), sh/2+ty*tile_size-pos[0]%tile_size, tile_size, tile_size)
+            bcrd = f"{cam_pos[0]+ty}:{cam_pos[1]+tx}:{cam_pos[2]}"
             if (cam_pos[0]+tx)%2 == (cam_pos[1]+ty)%2:
                 pg.draw.rect(screen, (200,200,200), block_corner)
 
-            a = font_alt.render(f"{cam_pos[0]+ty}:{cam_pos[1]+tx}", True, (0,0,0))
-            screen.blit(a, block_corner)
+            if bcrd in rail_nodes:
 
-            if f"{cam_pos[0]+ty}:{cam_pos[1]+tx}" in blockmap:
-                if blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"][0] == "platform":
-                    pg.draw.rect(screen, (100,100,100), block_corner)
-                elif blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"][0] == "platform_e_x_r":
-                    pg.draw.rect(screen, (100,100,100), [block_corner[0]+tile_size*3/4, block_corner[1],block_corner[2]/4, block_corner[3]])
-                elif blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"][0] == "platform_e_x_l":
-                    pg.draw.rect(screen, (100,100,100), [block_corner[0], block_corner[1],block_corner[2]/4, block_corner[3]])
-                elif blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"][0] == "platform_e_y_r":
-                    pg.draw.rect(screen, (100,100,100), [block_corner[0], block_corner[1]+tile_size*3/4,block_corner[2], block_corner[3]/4])
-                elif blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"][0] == "platform_e_y_l":
-                    pg.draw.rect(screen, (100,100,100), [block_corner[0], block_corner[1],block_corner[2], block_corner[3]/4])
-                
-                if "platform_s_a" in blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0]+tile_size, block_corner[1]),
-                        (block_corner[0]+tile_size/2, block_corner[1]),
-                        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
-                    ))
-                if "platform_s_b" in blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0], block_corner[1]+tile_size),
-                        (block_corner[0], block_corner[1]+tile_size/2),
-                        (block_corner[0]+tile_size/2, block_corner[1]+tile_size)
-                    ))
-                if "platform_s_c" in blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0], block_corner[1]),
-                        (block_corner[0]+tile_size/2, block_corner[1]),
-                        (block_corner[0], block_corner[1]+tile_size/2)
-                    ))
-                if "platform_s_d" in blockmap[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0]+tile_size, block_corner[1]+tile_size),
-                        (block_corner[0]+tile_size/2, block_corner[1]+tile_size),
-                        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
-                    ))
-
-            if f"{cam_pos[0]+ty}:{cam_pos[1]+tx}" in rail_nodes:
-                pg.draw.polygon(screen,(colors[0]),[
-                    [block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.5],
-                    [block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.4],
-                    [block_corner[0]+tile_size*0.6,block_corner[1]+tile_size*0.5],
-                    [block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.6],
-                ])
-
-                for axis in rail_nodes[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"]:
-                    for side in rail_nodes[f"{cam_pos[0]+ty}:{cam_pos[1]+tx}"][axis]:
+                for axis in rail_nodes[bcrd]:
+                    for side in rail_nodes[bcrd][axis]:
                         for track in side: rails.append(track)
 
-                if [cam_pos[0]+ty, cam_pos[1]+tx] == m_block:
-                    screen.blit(directional_prism, block_corner)
+    for track in rails:
+        inf = tracks[track]
+        l_stack = ["",""]
+        r_stack = ["", ""]
+        for i in range(len(inf.raw_up_l)):
+            l_stack = [l_stack[1], ""]
+            r_stack = [r_stack[1], ""]
+
+            l_p = inf.raw_up_l[i]
+            l_stack[1] = ((
+                sw/2-(l_p[1]-pos[1])+tile_size,
+                sh/2+(l_p[0]-pos[0]),
+                l_p[2]
+            ))
             
-            if min(ay,by) <= cam_pos[1]+tx < max(ay, by) and min(ax,bx) <= cam_pos[0]+ty < max(ax, bx):
-                screen.blit(az, block_corner[:2])
+            r_p = inf.raw_up_r[i]
+            r_stack[1] = ((
+                sw/2-(r_p[1]-pos[1])+tile_size,
+                sh/2+(r_p[0]-pos[0]),
+                r_p[2]
+            ))
+
+            if l_stack[0] != "":
+                dh = abs((l_stack[0][2]+l_stack[1][2])/2-pos[2])
+                if dh != 0 and dh <= tile_size/2:
+                    draw_opaque_polygon(screen, l_stack+r_stack[::-1], (80,80,80), 255*(1-dh*2/tile_size))
+                elif dh == 0:
+                    pg.draw.polygon(screen, (80,80,80), [i[:2] for i in l_stack+r_stack[::-1]])
+
+
+    for ty in range(-tiles_disp[1],tiles_disp[1]+1):
+        for tx in range(-tiles_disp[0],tiles_disp[0]+1):
+            block_corner = (sw/2-(tx*tile_size-pos[1]%tile_size), sh/2+ty*tile_size-pos[0]%tile_size, tile_size, tile_size)
+            bcrd = f"{cam_pos[0]+ty}:{cam_pos[1]+tx}:{cam_pos[2]}"
+            if bcrd in underlay_map:
+                if False: pass
+                elif underlay_map[bcrd] == "base":
+                    pg.draw.rect(screen, (96,96,96), block_corner)
+                elif underlay_map[bcrd] == "corner_a":
+                    pg.draw.polygon(screen, (96,96,96),(
+                        (block_corner[0], block_corner[1]),
+                        (block_corner[0]+tile_size, block_corner[1]),
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size)
+                    ))
+                elif underlay_map[bcrd] == "corner_b":
+                    pg.draw.polygon(screen, (96,96,96),(
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size),
+                        (block_corner[0], block_corner[1]+tile_size),
+                        (block_corner[0]+tile_size, block_corner[1])
+                    ))
+                elif underlay_map[bcrd] == "corner_c":
+                    pg.draw.polygon(screen, (96,96,96),(
+                        (block_corner[0], block_corner[1]+tile_size),
+                        (block_corner[0], block_corner[1]),
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size)
+                    ))
+                elif underlay_map[bcrd] == "corner_d":
+                    pg.draw.polygon(screen, (96,96,96),(
+                        (block_corner[0], block_corner[1]),
+                        (block_corner[0], block_corner[1]+tile_size),
+                        (block_corner[0]+tile_size, block_corner[1])
+                    ))
+
 
     for track in rails:
         inf = tracks[track]
@@ -203,6 +236,69 @@ while working:
             )
         screen.blit(tid, ((a[0]+b[0])/2-tid.get_width()/2, (a[1]+b[1])/2-tid.get_height()/2))
 
+    for ty in range(-tiles_disp[1],tiles_disp[1]+1):
+        for tx in range(-tiles_disp[0],tiles_disp[0]+1):
+            block_corner = (sw/2-(tx*tile_size-pos[1]%tile_size), sh/2+ty*tile_size-pos[0]%tile_size, tile_size, tile_size)
+            bcrd = f"{cam_pos[0]+ty}:{cam_pos[1]+tx}:{cam_pos[2]}"
+
+            a = font_alt.render(bcrd, True, (0,0,0))
+            screen.blit(a, block_corner)
+
+            if bcrd in blockmap:
+                if blockmap[bcrd][0] == "platform":
+                    pg.draw.rect(screen, (160,160,160), block_corner)
+                elif blockmap[bcrd][0] == "platform_e_x_r":
+                    pg.draw.rect(screen, (160,160,160), [block_corner[0]+tile_size*3/4, block_corner[1],block_corner[2]/4, block_corner[3]])
+                elif blockmap[bcrd][0] == "platform_e_x_l":
+                    pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2]/4, block_corner[3]])
+                elif blockmap[bcrd][0] == "platform_e_y_r":
+                    pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1]+tile_size*3/4,block_corner[2], block_corner[3]/4])
+                elif blockmap[bcrd][0] == "platform_e_y_l":
+                    pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2], block_corner[3]/4])
+                
+                if "platform_s_a" in blockmap[bcrd]:
+                    pg.draw.polygon(screen, (200,200,200),(
+                        (block_corner[0]+tile_size, block_corner[1]),
+                        (block_corner[0]+tile_size/2, block_corner[1]),
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
+                    ))
+                if "platform_s_b" in blockmap[bcrd]:
+                    pg.draw.polygon(screen, (200,200,200),(
+                        (block_corner[0], block_corner[1]+tile_size),
+                        (block_corner[0], block_corner[1]+tile_size/2),
+                        (block_corner[0]+tile_size/2, block_corner[1]+tile_size)
+                    ))
+                if "platform_s_c" in blockmap[bcrd]:
+                    pg.draw.polygon(screen, (200,200,200),(
+                        (block_corner[0], block_corner[1]),
+                        (block_corner[0]+tile_size/2, block_corner[1]),
+                        (block_corner[0], block_corner[1]+tile_size/2)
+                    ))
+                if "platform_s_d" in blockmap[bcrd]:
+                    pg.draw.polygon(screen, (200,200,200),(
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size),
+                        (block_corner[0]+tile_size/2, block_corner[1]+tile_size),
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
+                    ))
+
+            if bcrd in rail_nodes:
+                pg.draw.polygon(screen,(colors[0]),[
+                    [block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.5],
+                    [block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.4],
+                    [block_corner[0]+tile_size*0.6,block_corner[1]+tile_size*0.5],
+                    [block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.6],
+                ])
+
+                for axis in rail_nodes[bcrd]:
+                    for side in rail_nodes[bcrd][axis]:
+                        for track in side: rails.append(track)
+
+                if [cam_pos[0]+ty, cam_pos[1]+tx, cam_pos[2]] == m_block and mode == "rail":
+                    screen.blit(directional_prism, block_corner)
+            
+            if min(ay,by) <= cam_pos[1]+tx < max(ay, by) and min(ax,bx) <= cam_pos[0]+ty < max(ax, bx):
+                screen.blit(az, block_corner[:2])
+
 
     for evt in pg.event.get():
         if evt.type == pg.QUIT:
@@ -218,6 +314,16 @@ while working:
             if evt.key == pg.K_3: select = 2
             if evt.key == pg.K_4: select = 3
             if evt.key == pg.K_5: select = 4
+
+            if evt.key == pg.K_q: pos[2] -= tile_size
+            if evt.key == pg.K_e: pos[2] += tile_size
+
+            if evt.key == pg.K_TAB:
+                if mode == "underlay": mode = "rail"
+                elif mode == "rail": mode = "object"
+                elif mode == "object": mode = "underlay"
+
+                #print(mode)
         elif evt.type == pg.MOUSEBUTTONDOWN:
             clicked = True
 
@@ -225,43 +331,38 @@ while working:
     fps = round(clock.get_fps())
     kbd = pg.key.get_pressed()
     speed = 4 if not kbd[pg.K_LSHIFT] else 32
+    objects = ['platform', 'platform_e_x_l', 'platform_e_x_r', 'platform_e_y_l' , 'platform_e_y_r']
 
-    if kbd[pg.K_UP]: pos[0] -= speed
-    if kbd[pg.K_DOWN]: pos[0] += speed
-    if kbd[pg.K_LEFT]: pos[1] += speed
-    if kbd[pg.K_RIGHT]: pos[1] -= speed
+    if kbd[pg.K_w]: pos[0] -= speed
+    if kbd[pg.K_s]: pos[0] += speed
+    if kbd[pg.K_a]: pos[1] += speed
+    if kbd[pg.K_d]: pos[1] -= speed
 
     m_pos = [pg.mouse.get_pos()[i]-screen.get_size()[i]/2 for i in range(2)]
     m_pos[0] = pos[1]-m_pos[0]
     m_pos[1] = pos[0]+m_pos[1]
     m_btn = pg.mouse.get_pressed()
-    m_block = [int(m_pos[1]//tile_size), int(m_pos[0]//tile_size)+1]
-    m_pos = [m_pos[1], m_pos[0]]
+    m_block = [int(m_pos[1]//tile_size), int(m_pos[0]//tile_size)+1, int(pos[2]//tile_size)]
+    m_pos = [m_pos[1], m_pos[0], pos[2]]
+    crd = f"{m_block[0]}:{m_block[1]}:{m_block[2]}"
+
+    if first != [None, None]:
+        a = font.render(f"dx: {abs(first[0][0]-m_block[0])} | dy: {abs(first[0][1]-m_block[1])}", True, (255,255,255), (10,10,10))
+        screen.blit(a, [i+20 for i in pg.mouse.get_pos()])
+
 
     if clicked and not kbd[pg.K_SPACE]:
-        crd = f"{m_block[0]}:{m_block[1]}"
 
-        if m_btn[0] and kbd[pg.K_LALT]:
-            if kbd[pg.K_LSHIFT]:
-                sel = ['platform', 'platform_s_a', 'platform_s_b', 'platform_s_c' , 'platform_s_d'][select]
-            else:
-                sel = ['platform', 'platform_e_x_l', 'platform_e_x_r', 'platform_e_y_l' , 'platform_e_y_r'][select]
-
-            if sel in ['platform', 'platform_e_x_l', 'platform_e_x_r', 'platform_e_y_l' , 'platform_e_y_r'] and crd not in blockmap:
-                blockmap[crd] = [sel]
-            elif sel not in ['platform', 'platform_e_x_l', 'platform_e_x_r', 'platform_e_y_l' , 'platform_e_y_r'] and crd in blockmap and sel not in blockmap[crd]:
-                blockmap[crd].append(sel)
-
-        elif m_btn[0] and kbd[pg.K_LCTRL]:
+        if m_btn[0] and mode == "station":
             stations[cur_stat][0] = m_block
-        elif m_btn[2] and kbd[pg.K_LCTRL]:
+        elif m_btn[2] and mode == "station":
             stations[cur_stat][1] = m_block
-        elif m_btn[0] and crd not in rail_nodes and not kbd[pg.K_LALT]:
+        elif m_btn[0] and crd not in rail_nodes and mode == "rail":
             rail_nodes[crd] = {
                 "x":[[],[]],
                 "y":[[],[]]
             }
-        elif m_btn[0] and crd in rail_nodes:
+        elif m_btn[0] and crd in rail_nodes and mode == "rail":
             a = m_pos[0]-m_block[0]*tile_size  > m_block[1]*tile_size-m_pos[1]
             b = tile_size-(m_pos[0]-m_block[0]*tile_size ) > m_block[1]*tile_size-m_pos[1]
 
@@ -293,8 +394,8 @@ while working:
             if first != [None, None] and second != [None, None]:
                 if first[1] != second[1] and first[0] != second[0]:
                     passed = True
-                    s_crd = f"{first[0][0]}:{first[0][1]}"
-                    e_crd = f"{second[0][0]}:{second[0][1]}"
+                    s_crd = f"{first[0][0]}:{first[0][1]}:{first[0][2]}"
+                    e_crd = f"{second[0][0]}:{second[0][1]}:{second[0][2]}"
                     for link in rail_nodes[s_crd][first[1][0]][0 if first[1][1] == "-" else 1]:
                         if link in rail_nodes[e_crd][second[1][0]][0 if second[1][1] == "-" else 1]:
                             passed = False
@@ -310,22 +411,33 @@ while working:
                         rail_nodes[s_crd][first[1][0]][0 if first[1][1] == "-" else 1].append(maxtrack)
                         rail_nodes[e_crd][second[1][0]][0 if second[1][1] == "-" else 1].append(maxtrack)
 
-                        tracks[maxtrack] = rails2d.Rail(maxtrack)
-                        tracks[maxtrack].s_pos = [(first[0][i]+0.5)*tile_size for i in range(2)]
-                        tracks[maxtrack].e_pos = [(second[0][i]+0.5)*tile_size for i in range(2)]
+                        tracks[maxtrack] = rails_m.Rail(maxtrack)
+                        tracks[maxtrack].s_pos = ((first[0][0]+0.5)*tile_size, (first[0][1]+0.5)*tile_size, first[0][2]*tile_size)
+                        tracks[maxtrack].e_pos = ((second[0][0]+0.5)*tile_size, (second[0][1]+0.5)*tile_size, second[0][2]*tile_size)
                         tracks[maxtrack].s_axis = first[1][0]
                         tracks[maxtrack].e_axis = second[1][0]
+                        tracks[maxtrack].ud = tile_size//2+2
                         tracks[maxtrack].build()
                 first = [None, None]
                 second = [None, None]
 
 
-        elif m_btn[2] and crd in rail_nodes and not kbd[pg.K_LALT]:
+        elif m_btn[2] and crd in rail_nodes and mode == "rail":
             if rail_nodes[crd]["x"] == [[],[]] and rail_nodes[crd]["y"] == [[],[]]:
                 rail_nodes.pop(crd)
                 if first[0] != None and first[0] == m_block: first = [None, None]
 
-        elif m_btn[2] and crd in blockmap and kbd[pg.K_LALT]:
+    if not kbd[pg.K_SPACE] and mode == "underlay":
+        if m_btn[0]:
+            underlay_map[crd] =  underlay_blocks[select]
+        elif m_btn[2] and crd in underlay_map:
+            underlay_map.pop(crd)
+
+    if not kbd[pg.K_SPACE] and mode == "object":
+        if m_btn[0]:
+            sel = objects[select]
+            blockmap[crd] = [sel]
+        elif m_btn[2] and crd in blockmap:
             blockmap.pop(crd)
 
     if kbd[pg.K_SPACE] and m_btn[0]:
@@ -333,14 +445,19 @@ while working:
         pos[0] += int(old_m_pos[1]-pg.mouse.get_pos()[1])
 
     old_m_pos = pg.mouse.get_pos()
-
+    mode_str = {'rail':'Rails', 'object': 'Tiles', 'underlay':'Underlay'}
     z = [
         f"pos: {pos}",
         f"fps: {fps}",
-        f"selected: {['platform', 'edge vertical l', 'edge vertical r', 'edge horizontal up' , 'edge horizontal down'][select]}",
+        f"edit mode: {mode_str[mode]}",
+        "",
         f"current station: {cur_stat}",
         f"current station: {stations[min(cur_stat, len(stations)-1)][2]}",
     ]
+
+    if mode == "underlay": z[3] = f"selection: {underlay_blocks[select]}"
+    if mode == "object": z[3] = f"selection: {objects[select]}"
+
     for enum, line in enumerate(z):
         ptext = font.render(line,True,(240,240,240),(0,0,0))
         screen.blit(ptext,(20,20+30*enum))
@@ -351,4 +468,4 @@ while working:
 pg.quit()
 
 with open("world.json", mode="w", encoding="utf-8") as f:
-    f.write(json.dumps([rail_nodes, blockmap, stations], indent=4))
+    f.write(json.dumps([rail_nodes, blockmap, underlay_map, stations], indent=4))
