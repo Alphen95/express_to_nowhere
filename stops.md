@@ -50,7 +50,7 @@ Kennedy Line [7-11]
 35 - 15-17 Sts - Herald Sq (7-7x) (B-D-E-K) (S)
 36 - Madison Av (7-7x) (N-Q) 
 37 - Kobe Bryant Park (7-7x) (1-2-3-9)
-38 - Grand Junction (4-4x-5-6) (7-7x) (S)
+38 - Grand Junction (4-5-6) (7-7x) (S)
 39 - Hycourt Blvd (7-7x)
 40 - Scarboro Plaza (7-7x-11)
 41 - 32 - Paimon Sts (7-11)
@@ -63,8 +63,8 @@ Kennedy Line [7-11]
 48 - Main St - Kennedy (7-7x-11)
 
 Grace Street Line [S]
-49 - Grace Street - Herald Sq
-50 - Grace Strret - Grand Junction
+49 - Grace Street - Herald Sq (S) (B-D-E-K) (7-7x)
+50 - Grace Strret - Grand Junction (S) (4-5-6) (7-7x)
 
 Union Line [11]
 51 - Dukes Av (11)
@@ -73,6 +73,13 @@ Union Line [11]
 54 - Grand St (11)
 55 - Kobayashi St (11) (L-Lx)
 56 - 11 Rd (11)
-57 - South Broadway (11) (4-4x)
+57 - South Broadway (11) (4) /5-6/
 58 - Mai St - PotatoTec (11)
 59 - Suffolk Av (11) (1-2)
+
+Newport Line [4-5-6]
+60 - South Broadway (4) /5-6/
+61 - Union Gardens (4-5-6)
+62 - Fort Sanders (4-6) (L-Lx)
+63 - Westpotat Hall (4-5-6) (J-M)
+64 - Grand Junction (4-5-6)

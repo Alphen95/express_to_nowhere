@@ -147,7 +147,7 @@ class Bogey:
                     if self.front or old not in self.track_seq or old in self.track_seq and self.track_seq[-1] == old:
                         if self.debug and old not in self.track_seq:
                             print(f"{self.identifier}: choosing for myself here!")
-                        if old in self.track_seq and self.track_seq[-1] == old:
+                        if self.debug and old in self.track_seq and self.track_seq[-1] == old:
                             print(f"{self.identifier}: fuck sjit cunt bitchs")
                         if len(nxt) == 1:
                             self.track = nxt[0]

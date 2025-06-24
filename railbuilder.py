@@ -112,9 +112,20 @@ pos = [0,0,0]
 m_block = [14,88,1488]
 old_m_pos = (0,0)
 
-underlay_blocks = ["base", "corner_a", "corner_b", "corner_c", "corner_d"]
+underlay_blocks = ["base", "corner_a", "corner_b", "corner_c", "corner_d", "base", "base"]
+objects = [
+    'platform',
+    'platform_e_x_l',
+    'platform_e_x_r',
+    'platform_e_y_l',
+    'platform_e_y_r',
+    ['platform_e_x_l', 'platform_e_x_r'],
+    ['platform_e_y_l', 'platform_e_y_r'],
+]
 
 mode = "underlay"
+modes = ["rail", "object", "underlay", "station"]
+mode_str = {'rail':'Rails', 'object': 'Tiles', 'underlay':'Underlay', "station":"Stations "}
 
 while working:
     if cur_stat+1 > len(stations):
@@ -128,11 +139,11 @@ while working:
     cam_pos = (pos[0]//tile_size, pos[1]//tile_size, pos[2]//tile_size)
     sw, sh = screen.get_size()
     rails = []
-    az = pg.Surface([tile_size]*2)
-    az.fill((240,0,0))
-    az.set_alpha(64)
-    ax, ay, q = stations[cur_stat][0]
-    bx, by, q = stations[cur_stat][1]
+    stat = pg.Surface([tile_size]*2)
+    stat.fill((240,0,0))
+    stat.set_alpha(64)
+    ax, ay, az = stations[cur_stat][0]
+    bx, by, bz = stations[cur_stat][1]
 
 
     for ty in range(-tiles_disp[1],tiles_disp[1]+1):
@@ -245,15 +256,15 @@ while working:
             screen.blit(a, block_corner)
 
             if bcrd in blockmap:
-                if blockmap[bcrd][0] == "platform":
+                if "platform" in blockmap[bcrd]:
                     pg.draw.rect(screen, (160,160,160), block_corner)
-                elif blockmap[bcrd][0] == "platform_e_x_r":
+                if "platform_e_x_r" in blockmap[bcrd]:
                     pg.draw.rect(screen, (160,160,160), [block_corner[0]+tile_size*3/4, block_corner[1],block_corner[2]/4, block_corner[3]])
-                elif blockmap[bcrd][0] == "platform_e_x_l":
+                if "platform_e_x_l" in blockmap[bcrd]:
                     pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2]/4, block_corner[3]])
-                elif blockmap[bcrd][0] == "platform_e_y_r":
+                if "platform_e_y_r" in blockmap[bcrd]:
                     pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1]+tile_size*3/4,block_corner[2], block_corner[3]/4])
-                elif blockmap[bcrd][0] == "platform_e_y_l":
+                if "platform_e_y_l" in blockmap[bcrd]:
                     pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2], block_corner[3]/4])
                 
                 if "platform_s_a" in blockmap[bcrd]:
@@ -296,8 +307,8 @@ while working:
                 if [cam_pos[0]+ty, cam_pos[1]+tx, cam_pos[2]] == m_block and mode == "rail":
                     screen.blit(directional_prism, block_corner)
             
-            if min(ay,by) <= cam_pos[1]+tx < max(ay, by) and min(ax,bx) <= cam_pos[0]+ty < max(ax, bx):
-                screen.blit(az, block_corner[:2])
+            if min(ay,by) <= cam_pos[1]+tx < max(ay, by) and min(ax,bx) <= cam_pos[0]+ty < max(ax, bx) and min(az, bz) <= cam_pos[2] <= max(az, bz) and mode == "station":
+                screen.blit(stat, block_corner[:2])
 
 
     for evt in pg.event.get():
@@ -314,14 +325,14 @@ while working:
             if evt.key == pg.K_3: select = 2
             if evt.key == pg.K_4: select = 3
             if evt.key == pg.K_5: select = 4
+            if evt.key == pg.K_6: select = 5
+            if evt.key == pg.K_7: select = 6
 
             if evt.key == pg.K_q: pos[2] -= tile_size
             if evt.key == pg.K_e: pos[2] += tile_size
 
             if evt.key == pg.K_TAB:
-                if mode == "underlay": mode = "rail"
-                elif mode == "rail": mode = "object"
-                elif mode == "object": mode = "underlay"
+                mode = modes[(modes.index(mode)+1)%len(modes)]
 
                 #print(mode)
         elif evt.type == pg.MOUSEBUTTONDOWN:
@@ -331,12 +342,12 @@ while working:
     fps = round(clock.get_fps())
     kbd = pg.key.get_pressed()
     speed = 4 if not kbd[pg.K_LSHIFT] else 32
-    objects = ['platform', 'platform_e_x_l', 'platform_e_x_r', 'platform_e_y_l' , 'platform_e_y_r']
 
     if kbd[pg.K_w]: pos[0] -= speed
     if kbd[pg.K_s]: pos[0] += speed
     if kbd[pg.K_a]: pos[1] += speed
     if kbd[pg.K_d]: pos[1] -= speed
+    
 
     m_pos = [pg.mouse.get_pos()[i]-screen.get_size()[i]/2 for i in range(2)]
     m_pos[0] = pos[1]-m_pos[0]
@@ -345,6 +356,10 @@ while working:
     m_block = [int(m_pos[1]//tile_size), int(m_pos[0]//tile_size)+1, int(pos[2]//tile_size)]
     m_pos = [m_pos[1], m_pos[0], pos[2]]
     crd = f"{m_block[0]}:{m_block[1]}:{m_block[2]}"
+
+    if kbd[pg.K_LALT]:
+        a = font.render(f"x: {m_block[0]} | y: {m_block[1]} | z: {m_block[2]}", True, (255,255,255), (10,10,10))
+        screen.blit(a, [i+20 for i in pg.mouse.get_pos()])
 
     if first != [None, None]:
         a = font.render(f"dx: {abs(first[0][0]-m_block[0])} | dy: {abs(first[0][1]-m_block[1])}", True, (255,255,255), (10,10,10))
@@ -436,7 +451,7 @@ while working:
     if not kbd[pg.K_SPACE] and mode == "object":
         if m_btn[0]:
             sel = objects[select]
-            blockmap[crd] = [sel]
+            blockmap[crd] = [sel] if type(sel) == str else sel
         elif m_btn[2] and crd in blockmap:
             blockmap.pop(crd)
 
@@ -445,7 +460,6 @@ while working:
         pos[0] += int(old_m_pos[1]-pg.mouse.get_pos()[1])
 
     old_m_pos = pg.mouse.get_pos()
-    mode_str = {'rail':'Rails', 'object': 'Tiles', 'underlay':'Underlay'}
     z = [
         f"pos: {pos}",
         f"fps: {fps}",

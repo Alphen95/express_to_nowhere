@@ -10,7 +10,7 @@ import train
 import json
 
 win_size = (0,0)#(800,600)
-version = "0.2.6 z-levels testing"
+version = "0.2.7 Newport Av-1"
 
 
 pg.init()
@@ -70,7 +70,8 @@ st_tilemap = {}
 for stat in stations:
     for x in range(min(stat[0][0], stat[1][0]), max(stat[0][0], stat[1][0])):
         for y in range(min(stat[0][1], stat[1][1]), max(stat[0][1], stat[1][1])):
-            st_tilemap[(x,y)] = (stat[2], stat[3])
+            for z in range(min(stat[0][2], stat[1][2]), max(stat[0][2], stat[1][2])+1):
+                st_tilemap[(x,y,z)] = (stat[2], stat[3])
 
 switches = {
 
@@ -148,6 +149,15 @@ route_map = {
     "e":[(31,65,155),(255,255,255),"E"],
     "k":[(31,65,155),(255,255,255),"K"],
 
+    "j":[(154,103,51),(255,255,255),"E"],
+    "m":[(154,103,51),(255,255,255),"K"],
+
+    "n":[(246,210,23),(0,0,0),"N"],
+    "q":[(246,210,23),(0,0,0),"Q"],
+    
+    "l":[(167,170,172),(255,255,255),"L"],
+    "l_exp":[(167,170,172),(255,255,255),"Lx"],
+
     "1":[(238,51,48),(255,255,255),"1"],
     "2":[(238,51,48),(255,255,255),"2"],
     "3":[(238,51,48),(255,255,255),"3"],
@@ -166,9 +176,9 @@ route_map = {
 #[("plt1",False,True,True),("plt1",True,True,True),("plt1",False,True,True),("plt1",True,True,True)] 488
 
 consists = []
-consists.append(train.spawn_train([("plt1",False,True,True),("plt1",True,True,True)],59, (488,64), font))
+consists.append(train.spawn_train([("plt3",False,True,True),("plt3",True,True,True)],1948, (388,64), font))
 consists[-1].velocity_vector = 1
-consists[-1].route = "8"
+consists[-1].route = "5"
 follow = True
 
 while working:
@@ -213,7 +223,7 @@ while working:
     #screen.blit(disp,(screen.get_width()/2-disp.get_width()/2,screen.get_height()/2-disp.get_height()/2))
     screen.blit(a,(0,0))
     player_block = [int(i//tile_size) for i in player.pos]
-    player_block = (player_block[0], player_block[1])
+    player_block = (player_block[0], player_block[1], player_block[2])
     #player.pos = [round(i) for i in player.pos]
 
     to_generate = []
