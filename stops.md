@@ -83,3 +83,8 @@ Newport Line [4-5-6]
 62 - Fort Sanders (4-6) (L-Lx)
 63 - Westpotat Hall (4-5-6) (J-M)
 64 - Grand Junction (4-5-6)
+65 - Gold St (4-6)
+66 - Perth St (4-5-6)
+67 - Dane St (4-6)
+68 - Palisades 18 St (4-6)
+69 - 28 St (4-5-6)

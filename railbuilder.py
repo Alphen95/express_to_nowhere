@@ -145,7 +145,6 @@ while working:
     ax, ay, az = stations[cur_stat][0]
     bx, by, bz = stations[cur_stat][1]
 
-
     for ty in range(-tiles_disp[1],tiles_disp[1]+1):
         for tx in range(-tiles_disp[0],tiles_disp[0]+1):
             block_corner = (sw/2-(tx*tile_size-pos[1]%tile_size), sh/2+ty*tile_size-pos[0]%tile_size, tile_size, tile_size)
@@ -187,7 +186,6 @@ while working:
                     draw_opaque_polygon(screen, l_stack+r_stack[::-1], (80,80,80), 255*(1-dh*2/tile_size))
                 elif dh == 0:
                     pg.draw.polygon(screen, (80,80,80), [i[:2] for i in l_stack+r_stack[::-1]])
-
 
     for ty in range(-tiles_disp[1],tiles_disp[1]+1):
         for tx in range(-tiles_disp[0],tiles_disp[0]+1):
@@ -234,26 +232,28 @@ while working:
         
         pg.draw.lines(screen, colors[0], False, p, 2)
 
-        tid = font.render(f"{track}", True, (240,240,240),(10,10,10))
-        m=0
-        if len(inf.points) > 2: m=1
-        a = (
-                sw/2-(inf.points[len(inf.points)//2-m][1]-pos[1])+tile_size,
-                sh/2+(inf.points[len(inf.points)//2-m][0]-pos[0])
-            )
-        b = (
-                sw/2-(inf.points[len(inf.points)//2-1-m][1]-pos[1])+tile_size,
-                sh/2+(inf.points[len(inf.points)//2-1-m][0]-pos[0])
-            )
-        screen.blit(tid, ((a[0]+b[0])/2-tid.get_width()/2, (a[1]+b[1])/2-tid.get_height()/2))
+        if tile_size >= 32:
+            tid = font.render(f"{track}", True, (240,240,240),(10,10,10))
+            m=0
+            if len(inf.points) > 2: m=1
+            a = (
+                    sw/2-(inf.points[len(inf.points)//2-m][1]-pos[1])+tile_size,
+                    sh/2+(inf.points[len(inf.points)//2-m][0]-pos[0])
+                )
+            b = (
+                    sw/2-(inf.points[len(inf.points)//2-1-m][1]-pos[1])+tile_size,
+                    sh/2+(inf.points[len(inf.points)//2-1-m][0]-pos[0])
+                )
+            screen.blit(tid, ((a[0]+b[0])/2-tid.get_width()/2, (a[1]+b[1])/2-tid.get_height()/2))
 
     for ty in range(-tiles_disp[1],tiles_disp[1]+1):
         for tx in range(-tiles_disp[0],tiles_disp[0]+1):
             block_corner = (sw/2-(tx*tile_size-pos[1]%tile_size), sh/2+ty*tile_size-pos[0]%tile_size, tile_size, tile_size)
             bcrd = f"{cam_pos[0]+ty}:{cam_pos[1]+tx}:{cam_pos[2]}"
-
-            a = font_alt.render(bcrd, True, (0,0,0))
-            screen.blit(a, block_corner)
+            
+            #if tile_size >= 32:
+            #    a = font_alt.render(bcrd, True, (0,0,0))
+            #    screen.blit(a, block_corner)
 
             if bcrd in blockmap:
                 if "platform" in blockmap[bcrd]:

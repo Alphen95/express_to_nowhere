@@ -181,11 +181,12 @@ class Camera():
 
         draw_queue = []
         ap = self.translate_to((0,0))
+        dz = round(self.pos[2]/tile_size)
 
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
 
             for dx in range(bm_pos[0]-a,bm_pos[0]+a):
-                bcrd = f"{dx}:{dy}:{round(self.pos[2]/tile_size)}"
+                bcrd = f"{dx}:{dy}:{dz}"
                 #print(bcrd, self.pos[2])
 
 
@@ -198,7 +199,7 @@ class Camera():
                             tile_sprite = self.sprites[tile][0]
 
                             draw_queue.append([
-                                (dx*256+self.sprites[tile][2][0],dy*256+self.sprites[tile][2][1]),
+                                (dx*tile_size+self.sprites[tile][2][0],dy*tile_size+self.sprites[tile][2][1]),
                                 #round(tile_center[1]-m_tile_h//2-self.sprites[tile][1])-orth*(self.sprites[tile][2]-1),
                                 #((dx+dy+1)*90+self.sprites[tile][2]*90/128),
                                 tile_sprite,
@@ -313,8 +314,8 @@ class Camera():
             pg.draw.line(screen, grid_color,p1,p2,4)
 
         for train in trains:
-            if (21*256*(chunk_pos[0]-1) < train.pos[0] < 21*256*(chunk_pos[0]+2) and 
-                21*256*(chunk_pos[1]-1) < train.pos[1] < 21*256*(chunk_pos[1]+2) and
+            if (21*tile_size*(chunk_pos[0]-1) < train.pos[0] < 21*tile_size*(chunk_pos[0]+2) and 
+                21*tile_size*(chunk_pos[1]-1) < train.pos[1] < 21*tile_size*(chunk_pos[1]+2) and
                 train.type != None):
                 #рисуем
                 angle = round(train.angle//1) # угол//1 = инд. в массиве
@@ -329,8 +330,9 @@ class Camera():
                     array_entry[0][angle][0].get_width(),
                     array_entry[0][angle][0].get_height())
                 )
-                dh = abs(train.pos[2]-self.pos[2])
-                sprite.set_alpha(clamp(255*(1-dh*2/tile_size), 0,255))
+                dh = abs(int(train.pos[2])-int(self.pos[2]))
+                if dh != 0:
+                    sprite.set_alpha(clamp(255*(1-dh*2/tile_size), 0,255))
                 
                 draw_queue.append([
                     #round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2),

@@ -76,6 +76,8 @@ class Bogey:
 
         self.switch_state = 0
 
+        self.switches = {}
+
         self.thread = threading.Thread(target=self.cycle)
         self.thread.start()
 
@@ -147,15 +149,20 @@ class Bogey:
                     if self.front or old not in self.track_seq or old in self.track_seq and self.track_seq[-1] == old:
                         if self.debug and old not in self.track_seq:
                             print(f"{self.identifier}: choosing for myself here!")
-                        if self.debug and old in self.track_seq and self.track_seq[-1] == old:
+                        if  old in self.track_seq and self.track_seq[-1] == old:
                             print(f"{self.identifier}: fuck sjit cunt bitchs")
-                        if len(nxt) == 1:
+
+                        if str(self.track) in self.switches and self.switches[str(self.track)] in nxt:
+                            self.track = self.switches[str(self.track)]
+                        elif len(nxt) == 1:
                             self.track = nxt[0]
                         elif len(nxt) > 1:
                             self.track = nxt[self.switch_state]
                         
                     else:
                         self.track = self.track_seq[self.track_seq.index(old)+1]
+
+                if must_change and self.track == old: self.track = None
 
                 if self.track != old and self.debug:
                     if self.track != None:
@@ -261,6 +268,7 @@ class Consist:
         self.reductional_coef = 3
 
         self.switch = False
+        self.routing_switches = {}
 
         self.track_seq = []
         
@@ -315,6 +323,7 @@ class Consist:
 
 
         self.internal_clock = pg.time.Clock()
+        self.derailed = False
 
         self.is_alive = True
         self.thread = threading.Thread(target=self.cycle)
@@ -322,60 +331,68 @@ class Consist:
 
     def cycle(self):
         while self.is_alive:
-            tick = max(1,self.internal_clock.get_fps())
-            self.physical_think(tick)
+            if not self.derailed:
+                tick = max(1,self.internal_clock.get_fps())
+                self.physical_think(tick)
 
-            if self.velocity_vector == -1:
-                self.bogeys[0].front = True
-                self.bogeys[-1].front = False
+                if self.velocity_vector == -1:
+                    self.bogeys[0].front = True
+                    self.bogeys[-1].front = False
 
-                head = self.bogeys[0].track
-                rear = self.bogeys[-1].track
+                    head = self.bogeys[0].track
+                    rear = self.bogeys[-1].track
 
-                if len(self.track_seq) > 0 and self.track_seq[0] != head or len(self.track_seq) == 0:
-                    self.track_seq = [head]+self.track_seq
+                    if len(self.track_seq) > 0 and self.track_seq[0] != head or len(self.track_seq) == 0:
+                        self.track_seq = [head]+self.track_seq
 
-                if len(self.track_seq) > 1 and self.track_seq[-2] == rear:
-                    self.track_seq = self.track_seq[:-1]
+                    if len(self.track_seq) > 1 and self.track_seq[-2] == rear:
+                        self.track_seq = self.track_seq[:-1]
 
-            if self.velocity_vector == 1:
-                self.bogeys[0].front = False
-                self.bogeys[-1].front = True
+                if self.velocity_vector == 1:
+                    self.bogeys[0].front = False
+                    self.bogeys[-1].front = True
 
-                head = self.bogeys[-1].track
-                rear = self.bogeys[0].track
+                    head = self.bogeys[-1].track
+                    rear = self.bogeys[0].track
 
-                if len(self.track_seq) > 0 and self.track_seq[-1] != head or len(self.track_seq) == 0:
-                    self.track_seq.append(head)
+                    if len(self.track_seq) > 0 and self.track_seq[-1] != head or len(self.track_seq) == 0:
+                        self.track_seq.append(head)
 
-                if len(self.track_seq) > 1 and self.track_seq[1] == rear:
-                    self.track_seq = self.track_seq[1:]
+                    if len(self.track_seq) > 1 and self.track_seq[1] == rear:
+                        self.track_seq = self.track_seq[1:]
 
-            for i, bogey in enumerate(self.bogeys):
-                if bogey.track != None:
-                    bogey.velocity_vector = self.velocity_vector
-                    bogey.track_seq = self.track_seq[::(self.velocity_vector if self.velocity_vector != 0 else 1)]
-                    bogey.switch_state = 1 if self.switch else 0
+                for i, bogey in enumerate(self.bogeys):
+                    if bogey.track != None:
+                        bogey.velocity_vector = self.velocity_vector
+                        bogey.track_seq = self.track_seq[::(self.velocity_vector if self.velocity_vector != 0 else 1)]
+                        bogey.switch_state = 1 if self.switch else 0
+                        bogey.switches = self.routing_switches
 
-                    bogey.pos[0] += self.pixel_velocity*bogey.vectors[0]*self.velocity_vector*self.base_reverse/tick
-                    bogey.pos[1] += self.pixel_velocity*bogey.vectors[1]*self.velocity_vector*self.base_reverse/tick
-                    bogey.pos[2] += self.pixel_velocity*bogey.vectors[2]*self.velocity_vector*self.base_reverse/tick
+                        bogey.pos[0] += self.pixel_velocity*bogey.vectors[0]*self.velocity_vector*self.base_reverse/tick
+                        bogey.pos[1] += self.pixel_velocity*bogey.vectors[1]*self.velocity_vector*self.base_reverse/tick
+                        bogey.pos[2] += self.pixel_velocity*bogey.vectors[2]*self.velocity_vector*self.base_reverse/tick
 
-                    bogey.pos[0] = round(bogey.pos[0],2)
-                    bogey.pos[1] = round(bogey.pos[1],2)
-                    bogey.pos[2] = round(bogey.pos[2],2)
+                        bogey.pos[0] = round(bogey.pos[0],2)
+                        bogey.pos[1] = round(bogey.pos[1],2)
+                        bogey.pos[2] = round(bogey.pos[2],2)
 
-                    if bogey.angle in [90,270] and (bogey.pos[1]//256+0.6)*256 >= bogey.pos[1] >= (bogey.pos[1]//256+0.4)*256:
-                        bogey.pos[1] = (bogey.pos[1]//256+0.5)*256
-                    elif bogey.angle in [0,180] and (bogey.pos[0]//256+0.6)*256 >= bogey.pos[0] >= (bogey.pos[0]//256+0.4)*256:
-                        bogey.pos[0] = (bogey.pos[0]//256+0.5)*256
+                        tile_size = 256
 
-                    #self.occupied_tracks[i] = bogey.track
+                        if bogey.angle in [90,270] and (bogey.pos[1]//tile_size+0.6)*tile_size >= bogey.pos[1] >= (bogey.pos[1]//tile_size+0.4)*tile_size:
+                            bogey.pos[1] = (bogey.pos[1]//tile_size+0.5)*tile_size
+                        elif bogey.angle in [0,180] and (bogey.pos[0]//tile_size+0.6)*tile_size >= bogey.pos[0] >= (bogey.pos[0]//tile_size+0.4)*tile_size:
+                            bogey.pos[0] = (bogey.pos[0]//tile_size+0.5)*tile_size
 
-            for train in self.trains:
-                train.velocity = self.pixel_velocity
-                train.velocity_vector = self.velocity_vector
-                train.cycle(tick)
+                        if bogey.vectors[2] == 0: bogey.pos[2] = round(bogey.pos[2]/tile_size)*tile_size
+
+                        #self.occupied_tracks[i] = bogey.track
+                    else:
+                        self.derailed = True
+
+                for train in self.trains:
+                    train.velocity = self.pixel_velocity
+                    train.velocity_vector = self.velocity_vector
+                    train.cycle(tick)
 
             self.internal_clock.tick(60)
 
@@ -390,7 +407,7 @@ class Consist:
         self.acceleration = traction_force/self.mass
         self.velocity += self.acceleration/tick
         self.velocity = max(0, self.velocity)
-        self.pixel_velocity = round(self.velocity*30,2)#round(self.velocity*21,2)
+        self.pixel_velocity = round(self.velocity*50,2)#round(self.velocity*21,2)
 
         self.internal.axial_speed = self.velocity/self.wheel_radius*self.reductional_coef
 

@@ -23,3 +23,59 @@ LGA
 Myrtle Av
 Panthalassic
 Westpotat Hall
+
+
+    to_generate = []
+    for oc_t in occupied_tracks:
+        if oc_t not in to_generate and oc_t in track_edges:
+            to_generate.append(oc_t)
+
+    for oc_t in to_generate:
+        params = track_edges[oc_t]
+        dx = random.randint(generation_params["dx"][0],generation_params["dx"][1])*(-1 if params[0] == "up" else 1)
+        if not params[2] or generation_params["repeat_bezier"]:
+            if len(generation_params["max_dy"]) == 1:
+                z = int(abs(dx/generation_params["max_dy"][0]))
+                if z > 0: dy = int(random.randint(0,z))*(1-random.randint(0,1)*2)
+                else: dy = 0
+            else:
+                dy = int(random.randint(generation_params["max_dy"][0],generation_params["max_dy"][1]))*(1-random.randint(0,1)*2)
+        else:
+            dy = 0
+        new_pos = (params[1][0]+dx, params[1][1]+dy)
+
+        max_track_id+=1
+        #tracks[max_track_id] = rails.Rail(max_track_id)
+        tracks[max_track_id].pos_a = [i*tile_size+128 for i in new_pos]
+        tracks[max_track_id].pos_b = [i*tile_size+128 for i in params[1]]
+        tracks[max_track_id].build()
+
+        if params[0] == "up":
+            rail_nodes[f"{params[1][0]}:{params[1][1]}"][0].append(max_track_id)
+            rail_nodes[f"{new_pos[0]}:{new_pos[1]}"] = [[],[max_track_id]]
+        else:
+            rail_nodes[f"{params[1][0]}:{params[1][1]}"][1].append(max_track_id)
+            rail_nodes[f"{new_pos[0]}:{new_pos[1]}"] = [[max_track_id],[]]
+
+        #rockgen
+
+        chance = random.random()
+        if chance > 0.5: 
+            rock_yd = random.randint(1,2)*random.choice([1,-1])
+            rock_xd = random.randint(0, max(new_pos[0],params[1][0])-min(new_pos[0],params[1][0]))
+            rock_x = min(new_pos[0],params[1][0])+rock_xd
+            if rock_yd > 0: rock_y = rock_yd+max(new_pos[1],params[1][1])
+            else: rock_y = rock_yd+min(new_pos[1],params[1][1])
+
+            player.blockmap[f"{rock_x}:{rock_y}"] = ["rock"]
+
+        track_edges[max_track_id] = (params[0],new_pos, dy != 0)
+        track_edges.pop(max_track_id-1)
+        
+track_edges = {-1:["up",(-25,-2),False]}
+max_track_id = -1
+generation_params = {
+    "dx":[7,14],
+    "max_dy":[0,3],
+    "repeat_bezier":False
+}
