@@ -4,13 +4,14 @@ import pygame as pg
 import os
 import time
 import random
+import leitmotifplus as leitmotif
 import isometry as isometry
 import rails_iso as rails_m
 import train
 import json
 
 win_size = (0,0)#(800,600)
-version = "0.2.8 humane spawner update"
+version = "0.2.8.1 polishing"
 
 
 pg.init()
@@ -26,38 +27,6 @@ win_size = (win_size[0],win_size[1])
 working = True
 tile_size = 256
 ct, fg, bg = (tile_size/2, tile_size/2), (tile_size, tile_size), (0,0)
-
-def draw_table_window(entries, f, mouse, mouse_deltas):
-    ht = len(entries)
-    w_char_dim, h_char_dim  = f.render("Z", True, (0,0,0)).get_size()
-    states = []
-    wd = 0
-    for line in entries:
-        twd = 0
-        for itm in line: twd+=1+len(itm)
-        wd = max(wd, twd)
-    tmps = pg.Surface((wd*w_char_dim+6, ht*h_char_dim+6))
-    tmps.fill([64]*3)
-    tmps.fill([128]*3, (3,3,wd*w_char_dim, ht*h_char_dim))
-    m_pos = [mouse[0][0]-mouse_deltas[0]+(wd*w_char_dim+6)*mouse_deltas[2], mouse[0][1]-mouse_deltas[1]+(ht*h_char_dim+6)*mouse_deltas[3]]
-    for i, line in enumerate(entries):
-        if i != len(entries)-1: pg.draw.line(tmps, (0,0,0), (3,2+(i+1)*h_char_dim), (3+w_char_dim*wd,2+(i+1)*h_char_dim),2)
-        displace = 0
-        max_len = sum([len(i)+1 for i in line])
-        states.append([])
-
-        for ii, item in enumerate(line):
-            z = f.render(item, True, (0,0,0))
-            tmps.blit(z, (3+wd*w_char_dim*(displace+len(item)/2+0.5)/max_len-z.get_width()/2,3+(i+0.5)*h_char_dim-z.get_height()/2))
-            if 3+wd*w_char_dim*displace/max_len < m_pos[0] < 3+wd*w_char_dim*(displace+len(item)+1)/max_len and 0 < m_pos[1]-(3+i*h_char_dim) < h_char_dim and mouse[1]:
-                states[-1].append(True)
-            else:states[-1].append(False)
-
-            displace += len(item)+1
-            if ii != len(line)-1: pg.draw.line(tmps, (0,0,0), (2+wd*w_char_dim*displace/max_len,3+(i)*h_char_dim), (2+wd*w_char_dim*displace/max_len,3+(i+1)*h_char_dim),2)
-
-
-    return tmps, states
 
 route_map = {
     None:[(10,10,10),(255,255,255),"X"],
@@ -88,9 +57,9 @@ route_map = {
     #"3":[(238,51,48),(255,255,255),"3"],
     #"9":[(238,51,48),(255,255,255),"9"],
     
-    #"4":[(14,148,71),(255,255,255),"4"],
-    #"5":[(14,148,71),(255,255,255),"5"],
-    #"6":[(14,148,71),(255,255,255),"6"],
+    "4":[(14,148,71),(255,255,255),"4"],
+    "5":[(14,148,71),(255,255,255),"5"],
+    "6":[(14,148,71),(255,255,255),"6"],
 
     #"8":[(73,218,247),(255,255,255),"8"],
 
@@ -130,7 +99,6 @@ player.train_sprites["plt0"] = player.render_train(plt0_sheet,((32,101),21 ,2))
 player.train_sprites["plt1"] = player.render_train(plt1_sheet,((32,122),21 ,2))
 player.train_sprites["plt3"] = player.render_train(plt3_sheet,((32,97),21 ,2))
 
-player.blockmap["-20:-1"] = ["rock"]
 
 with open("world.json") as f:
     q = json.loads(f.read())
@@ -181,7 +149,8 @@ for node in rail_nodes:
 for rail_id in tracks:
     tracks[rail_id].build()
 
-
+player.rail_nodes = rail_nodes
+player.tracks = tracks
 train.tracks = tracks
 train.nodes = rail_nodes
 
@@ -198,9 +167,6 @@ class Dummy:
 a = pg.Surface(win_size, pg.SRCALPHA)
 a.fill((64,64,64,32))
 
-#[("plt3",False,True,True),("plt3",True,True,True),("plt3",False,True,True),("plt3",True,True,True)] 388
-#[("plt1",False,True,True),("plt1",True,True,True),("plt1",False,True,True),("plt1",True,True,True)] 488
-#[("plt0",False,True,True),("plt0",True,True,True),("plt0",False,True,True),("plt0",True,True,True)] 400
 train_spawn_info = [
     [[("plt0",False,True,True),("plt0",True,True,True),("plt0",False,True,True),("plt0",True,True,True)],400],
     [[("plt1",False,True,True),("plt1",True,True,True),("plt1",False,True,True),("plt1",True,True,True)],488],
@@ -209,6 +175,7 @@ train_spawn_info = [
 
 consists = {}
 curc = -1
+q = 0
 
 spawn_params = {
     "spawnpoints":[
@@ -219,16 +186,36 @@ spawn_params = {
     "pointers":[0,0]
 }
 
-if False:
-    tmp = train.spawn_train([("plt0",False,True,True),("plt0",True,True,True),("plt0",False,True,True),("plt0",True,True,True)],1227, (400,64), font)
-    if tmp != None:
-        curc = random.randint(0, 9999)
-        consists[curc] = tmp
-        consists[curc].velocity_vector = 1
-
 
 follow = True
 spawn = False
+
+spawnpoints = [
+    ["78 St - Waterside", 1227], ["Union Turnpike", 1267], ["Pathalassic Av - Expo", 1350], ["Intervale Square", 1374], ["Halson Terminal", 516], #5av-Wside-Garcia
+    ["Kennedy - Main St", 840], ["Herald Square", 1379], ["Eastferry", 1395], ["Suffolk Av", 2017], #Kennedy-Union
+    ["South Broadway", 1947], ["39 Street - Exchange", 2200], ["Worth Street", 2522], ["Tenporter Yard", [2547,2546,2545,2544]], #Newport
+]
+trains = ["PLT-0", "PLT-1", "PLT-3"]
+
+spawn_window = leitmotif.Window((screen.get_width()-300-4, screen.get_height()/2-75, 300, 242), font, 26, {
+    "label_title":{
+        "active":True,"type":"label","align":"center","text":"Train spawner",
+        "rect":[0,"indent","w","line_height"]
+    },
+    "list_station": {
+        "active":True,"type":"item_list","items":[i[0] for i in spawnpoints],
+        "rect":[0,"indent+line_height*1.33","w","line_height*4"]
+    },
+    "list_train": {
+        "active":True,"type":"item_list","items":trains,
+        "rect":[0,"indent+line_height*5.66","w","line_height*2"]
+    },
+    "button_spawn":{
+        "active":True,"type":"button","text":"Spawn!","align":"center",
+        "rect":["w/4+1","indent+line_height*8","w/2-2","line_height"]
+    },
+})
+spawn_window.recalculate()
 
 while working:
     clicked = False
@@ -243,8 +230,6 @@ while working:
             pressed.append(evt.key)
 
             if evt.key == pg.K_d: player.debug = not player.debug
-            elif evt.key == pg.K_EQUALS: player.scale *=2
-            elif evt.key == pg.K_MINUS: player.scale /= 2
             elif evt.key == pg.K_q and not follow: player.pos[2] -= tile_size
             elif evt.key == pg.K_e and not follow: player.pos[2] += tile_size
             
@@ -266,12 +251,17 @@ while working:
                 
             if evt.key == pg.K_RIGHT and follow:
                 consists[curc].route = list(route_map.keys())[(list(route_map.keys()).index(consists[curc].route)-1)%len(route_map)]
-                if consists[curc].route in route_switches:consists[curc].route_switches = route_switches[consists[curc].route]
+                if consists[curc].route in route_switches:consists[curc].routing_switches = route_switches[consists[curc].route]
                 else: consists[curc].routing_switches = {}
+
         elif evt.type == pg.MOUSEBUTTONDOWN:
             clicked = True
         elif evt.type == pg.MOUSEBUTTONUP:
             released = True
+    m_pos = pg.mouse.get_pos()
+    m_btn = pg.mouse.get_pressed()
+
+    mouse_state = (m_pos[0], m_pos[1], clicked, (m_btn[0] or m_btn[1] or m_btn[2]), (m_btn[0], m_btn[1], m_btn[2]))
 
     screen.fill((0,0,0))
 
@@ -287,28 +277,23 @@ while working:
             occupied_tracks.append(tr.occupied_tracks[0])
             occupied_tracks.append(tr.occupied_tracks[1])
     
-    disp = player.draw_map(temp_trains,screen)
-    #screen.blit(disp,(screen.get_width()/2-disp.get_width()/2,screen.get_height()/2-disp.get_height()/2))
-    screen.blit(a,(0,0))
+    player.draw_map(temp_trains,screen, q)
     player_block = [int(i//tile_size) for i in player.pos]
     player_block = (player_block[0], player_block[1], player_block[2])
-    #player.pos = [round(i) for i in player.pos]
 
-    player.rail_nodes = rail_nodes
-    player.tracks = tracks
-    train.tracks = tracks
-    train.nodes = rail_nodes
-
-    #if pg.mouse.get_pressed()[0]: print(player.translate_from(pg.mouse.get_pos()))
+    #player.rail_nodes = rail_nodes
+    #player.tracks = tracks
+    #train.tracks = tracks
+    #train.nodes = rail_nodes
 
     kbd = pg.key.get_pressed()
 
     if follow and curc != -1:
         screen.blit(consists[curc].internal.render_graphics(screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released]),(0,0))
-        consists[curc].switch = kbd[pg.K_LALT]
+        consists[curc].switch = kbd[pg.K_LALT]# if consists[curc].route != None else 0
 
     fps = round(clock.get_fps())
-    speed = 16
+    speed = 16 if not kbd[pg.K_LALT] else 1
 
     if not follow:
         if kbd[pg.K_DOWN]: 
@@ -330,9 +315,6 @@ while working:
         version,
         f"pos: {player.pos}",
         f"fps: {fps}",
-        #f"speed: {round(consists[curc].pixel_velocity,2)} px/s",
-        #f"speed: {round(consists[curc].velocity*3.6,2)} km/h",
-        #f"torque: {round(consists[curc].torque,2)}"
     ]
     
     if curc != -1:
@@ -344,25 +326,19 @@ while working:
     char = dfont.render("A",True, (0,0,0))
 
     if spawn:
-        sp_wind, states = draw_table_window([
-            ["Lazy spawner"],
-            ["<",spawn_params["spawnpoints"][spawn_params["pointers"][0]][0],">"],
-            ["<",spawn_params["trains"][spawn_params["pointers"][1]],">"],
-            ["Spawn"]
-        ], sfont, [pg.mouse.get_pos(), clicked], (screen.get_width()-4, screen.get_height()/2, 1, 0.5))
-        if states[1][0]: spawn_params["pointers"][0] = (spawn_params["pointers"][0]-1)%len(spawn_params["spawnpoints"])
-        if states[1][2]: spawn_params["pointers"][0] = (spawn_params["pointers"][0]+1)%len(spawn_params["spawnpoints"])
-        if states[2][0]: spawn_params["pointers"][1] = (spawn_params["pointers"][1]-1)%len(spawn_params["trains"])
-        if states[2][2]: spawn_params["pointers"][1] = (spawn_params["pointers"][1]+1)%len(spawn_params["trains"])
-        if states[3][0] and curc == -1:
-            tmp = train.spawn_train(train_spawn_info[spawn_params["pointers"][1]][0],spawn_params["spawnpoints"][spawn_params["pointers"][0]][1], (train_spawn_info[spawn_params["pointers"][1]][1],64), font)
+        spawn_window.update(screen, mouse_state, pressed)
+        if spawn_window.get_state("button_spawn") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "":
+            trackid = spawnpoints[spawn_window.objects["list_station"]["items"].index(spawn_window.get_state("list_station"))][1]
+            trainpar = train_spawn_info[spawn_window.objects["list_train"]["items"].index(spawn_window.get_state("list_train"))]
+            tmp = train.spawn_train(
+                trainpar[0],
+                trackid if type(trackid) == int else random.choice(trackid), 
+                (trainpar[1],64), font)
             if tmp != None:
                 curc = random.randint(0, 9999)
                 consists[curc] = tmp
                 consists[curc].velocity_vector = 1
                 follow = True
-        screen.blit(sp_wind, (screen.get_width()-sp_wind.get_width()-4, screen.get_height()/2-sp_wind.get_height()/2))
-
 
 
     if curc != -1:
@@ -391,12 +367,14 @@ while working:
 
 
 
-        for enum, line in enumerate(z):
-            ptext = font.render(line,True,(240,240,240),(0,0,0))
-            screen.blit(ptext,(20,20+30*enum))
+    for enum, line in enumerate(z):
+        ptext = font.render(line,True,(240,240,240),(0,0,0))
+        screen.blit(ptext,(20,20+30*enum))
 
-        ptext = font.render(f"alt {'pressed' if kbd[pg.K_LALT] else 'released'}",True,(240,240,240),(84,109,255) if kbd[pg.K_LALT] else(0,0,0))
-        screen.blit(ptext,(20,20+30*len(z)))
+    #if curc != -1 and consists[curc].route == None: altstate = "DISABLED"
+    altstate = 'pressed' if kbd[pg.K_LALT] else 'released'
+    ptext = font.render(f"alt {altstate}",True,(240,240,240),(84,109,255) if altstate == 'pressed' else(0,0,0))
+    screen.blit(ptext,(20,20+30*len(z)))
 
 
     #ptext = font.render(f"а приборки-то нема",True,(240,240,240),(255,50,50))

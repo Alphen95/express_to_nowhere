@@ -88,3 +88,7 @@ Newport Line [4-5-6]
 67 - Dane St (4-6)
 68 - Palisades 18 St (4-6)
 69 - 28 St (4-5-6)
+70 - Dixie St (4)
+71 - Lawrence Av (4-5)
+72 - Seneca Av (4)
+73 - Worth Street (4-5)

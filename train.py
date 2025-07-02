@@ -149,8 +149,10 @@ class Bogey:
                     if self.front or old not in self.track_seq or old in self.track_seq and self.track_seq[-1] == old:
                         if self.debug and old not in self.track_seq:
                             print(f"{self.identifier}: choosing for myself here!")
-                        if  old in self.track_seq and self.track_seq[-1] == old:
+                        if self.debug and old in self.track_seq and self.track_seq[-1] == old:
                             print(f"{self.identifier}: fuck sjit cunt bitchs")
+
+                        #print(self.track, self.switches, str(self.track) in self.switches)
 
                         if str(self.track) in self.switches and self.switches[str(self.track)] in nxt:
                             self.track = self.switches[str(self.track)]
@@ -407,7 +409,7 @@ class Consist:
         self.acceleration = traction_force/self.mass
         self.velocity += self.acceleration/tick
         self.velocity = max(0, self.velocity)
-        self.pixel_velocity = round(self.velocity*50,2)#round(self.velocity*21,2)
+        self.pixel_velocity = round(self.velocity*30,2)#round(self.velocity*21,2)
 
         self.internal.axial_speed = self.velocity/self.wheel_radius*self.reductional_coef
 

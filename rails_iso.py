@@ -20,6 +20,19 @@ def create_rail(idt, start, end):
     rail.build()
     return rail
 
+def bulk_convert(base):
+    scale = 90/128
+    result = []
+    for point in base:
+        x, y, z = point
+        
+        x *= scale
+        y *= scale
+        dx = ((x - y))
+        dy = ((x + y)*0.5)
+        result.append((int(dx),int(dy), z))
+    return result
+
 
 class Rail:
     def __init__(self, identifier):
@@ -271,48 +284,13 @@ class Rail:
             dy = ((x + y)*0.5)
             self.draw_points.append((dx, dy, z))
 
-        self.l_track = []
-        self.r_track = []
         self.raw_up_l = ll
         self.raw_up_r = rr
 
-        for point in l:
-            x, y, z = point
-            
-            x *= scale
-            y *= scale
-            dx = ((x - y))
-            dy = ((x + y)*0.5)
-            self.l_track.append((int(dx),int(dy), z))
-            
-        for point in r:
-            x, y, z = point
-            
-            x *= scale
-            y *= scale
-            dx = ((x - y))
-            dy = ((x + y)*0.5)
-            self.r_track.append((int(dx),int(dy), z))
+        self.l_track = bulk_convert(l)
+        self.r_track = bulk_convert(r)
         
-        self.underlay_points_l = []
-        self.underlay_points_r = []
-
-        for point in ll:
-            x, y, z = point
-            
-            x *= scale
-            y *= scale
-            dx = ((x - y))
-            dy = ((x + y)*0.5)
-            self.underlay_points_l.append((int(dx),int(dy), z))
-
-        for point in rr:
-            x, y, z = point
-            
-            x *= scale
-            y *= scale
-            dx = ((x - y))
-            dy = ((x + y)*0.5)
-            self.underlay_points_r.append((int(dx),int(dy), z))
+        self.underlay_points_l = bulk_convert(ll)
+        self.underlay_points_r = bulk_convert(rr)
         
                     

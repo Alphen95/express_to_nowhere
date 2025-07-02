@@ -158,7 +158,7 @@ class Camera():
 
         return [surfaces, (stacks)*4, size]
 
-    def draw_map(self, trains, disp):
+    def draw_map(self, trains, disp, debug_flag = False):
         ground_color = pg.Color("#404040")
         grid_color = pg.Color("#505050")
         #ground_color = pg.Color("#f7f1d2")
@@ -166,28 +166,26 @@ class Camera():
 
         tile_size = 256
         bm_pos = (int(self.pos[0])//tile_size,int(self.pos[1])//tile_size)
-        chunk_pos = (bm_pos[0]//21, bm_pos[1]//21)
 
         screen = disp
         screen.set_colorkey((0,0,0))
         screen.fill(ground_color)
 
         cnt = 0
-        a = 10
 
         m_tile_w = 360
         m_tile_h = 180
+        a = max(int(screen.get_width()//m_tile_w+1), int(screen.get_height()//m_tile_h+1))+3
         tracks = []
 
         draw_queue = []
-        ap = self.translate_to((0,0))
+        player_coord = self.translate_to((0,0))
         dz = round(self.pos[2]/tile_size)
 
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
 
             for dx in range(bm_pos[0]-a,bm_pos[0]+a):
                 bcrd = f"{dx}:{dy}:{dz}"
-                #print(bcrd, self.pos[2])
 
 
                 crdb = self.translate_to((dx*tile_size, dy*tile_size))
@@ -200,8 +198,6 @@ class Camera():
 
                             draw_queue.append([
                                 (dx*tile_size+self.sprites[tile][2][0],dy*tile_size+self.sprites[tile][2][1]),
-                                #round(tile_center[1]-m_tile_h//2-self.sprites[tile][1])-orth*(self.sprites[tile][2]-1),
-                                #((dx+dy+1)*90+self.sprites[tile][2]*90/128),
                                 tile_sprite,
                                 (
                                     round(tile_center[0]-m_tile_w//2),
@@ -238,69 +234,43 @@ class Camera():
                     p4 = self.translate_to((dx*tile_size,(dy+1)*tile_size))
 
                     pg.draw.lines(screen, (0,0,0),True,(p1,p2,p3,p4),2)
-
-                    #k = font.render(bcrd,True,(0,0,255))
-                    #screen.blit(k,(tile_center[0]-k.get_width()/2,tile_center[1]-k.get_height()))
-                    #k = font.render(f"{cnt}",True,(0,0,255))
-                    #screen.blit(k,(tile_center[0]-k.get_width()/2,tile_center[1]))
                 
         for track in tracks:
             inf = self.tracks[track]
             l_stack = ["",""]
             r_stack = ["", ""]
             for i in range(len(inf.raw_up_l)):
-                l_stack = [l_stack[1], ""]
-                r_stack = [r_stack[1], ""]
 
                 l_p = inf.underlay_points_l[i]
-                l_stack[1] = ((
-                    l_p[0]+ap[0],
-                    l_p[1]+ap[1],
-                    l_p[2]
-                ))
+                l_stack = [l_stack[1], (l_p[0]+player_coord[0], l_p[1]+player_coord[1], l_p[2])]
                 
                 r_p = inf.underlay_points_r[i]
-                r_stack[1] = ((
-                    r_p[0]+ap[0],
-                    r_p[1]+ap[1],
-                    r_p[2]
-                ))
+                r_stack = [r_stack[1], (r_p[0]+player_coord[0], r_p[1]+player_coord[1], r_p[2])]
 
                 if l_stack[0] != "":
                     dh = abs((l_stack[0][2]+l_stack[1][2])/2-self.pos[2])
-                    #if dh != 0 and dh <= tile_size/2:
-                    #    draw_opaque_polygon(screen, l_stack+r_stack[::-1], (96,96,96), 255*(1-dh*2/tile_size))
-                    #elif dh == 0:
-                    #    pg.draw.polygon(screen, (96,96,96), [i[:2] for i in l_stack+r_stack[::-1]])
                     if dh <= tile_size/2:
                         pg.draw.polygon(screen, [int(clamp(80-16*(dh*2/tile_size), 64, 80))]*3, [i[:2] for i in l_stack+r_stack[::-1]])
 
-        for track in tracks:
+        for i, track in enumerate(tracks): #стековая рисовальня путей
             stack = ["",""]
-            for point in self.tracks[track].l_track:
-                #point = [i*2 for i in point]
-                point = [point[0]+ap[0], point[1]+ ap[1], point[2]]
-                stack = [stack[1],point]
-                if stack[0] != "":
-                    dh = abs((stack[0][2]+stack[1][2])/2-self.pos[2])
-                    pg.draw.line(screen,[int(clamp(16+48*(dh*2/tile_size), 16, 64))]*3,
-                        stack[0][:2],
-                        stack[1][:2],
-                        int(4)
-                    )
 
-            stack = ["",""]
-            for point in self.tracks[track].r_track:
-                #point = [i*2 for i in point]
-                point = [point[0]+ap[0], point[1]+ ap[1], point[2]]
+            for point in self.tracks[track].l_track+["",""]+self.tracks[track].r_track: # левая рельса - пропуск - правая рельса
+
+                if point != "": point = [point[0]+player_coord[0], point[1]+player_coord[1], point[2]]
                 stack = [stack[1],point]
-                if stack[0] != "":
+                if stack[0] != "" and stack[1] != "": # если стак вообще есть смысл ворошить (без пропусков), то рисуем
                     dh = abs((stack[0][2]+stack[1][2])/2-self.pos[2])
-                    pg.draw.line(screen,[int(clamp(16+48*(dh*2/tile_size), 16, 64))]*3,
-                        stack[0][:2],
-                        stack[1][:2],
+                    color = [int(clamp(16+48*(dh*2/tile_size), 16, 64))]
+
+                    if 0 <= stack[0][0] <= screen.get_width() and 0 <= stack[0][1] <= screen.get_height(): drawstack = stack
+                    else: drawstack = stack[::-1]
+                    
+                    pg.draw.line(screen,color*3,
+                        drawstack[0][:2],
+                        drawstack[1][:2],
                         int(4)
-                    )
+                        )
 
         z = []
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
@@ -313,42 +283,42 @@ class Camera():
             p2 = self.translate_to((dx*tile_size,(bm_pos[1]+a)*tile_size))
             pg.draw.line(screen, grid_color,p1,p2,4)
 
-        for train in trains:
-            if (21*tile_size*(chunk_pos[0]-1) < train.pos[0] < 21*tile_size*(chunk_pos[0]+2) and 
-                21*tile_size*(chunk_pos[1]-1) < train.pos[1] < 21*tile_size*(chunk_pos[1]+2) and
-                train.type != None):
-                #рисуем
-                angle = round(train.angle//1) # угол//1 = инд. в массиве
-                angle %= 360
-                array_entry = self.train_sprites[train.type]
-                
-                center_pos = self.translate_to(train.pos)
-                #center_pos = self.translate_to([i*2 for i in train.pos])
+        for train in trains: # проходка по всем поездам
 
-                #sprite = array_entry[0][angle][0] 
-                sprite = pg.transform.scale(array_entry[0][angle][0],(
-                    array_entry[0][angle][0].get_width(),
-                    array_entry[0][angle][0].get_height())
-                )
-                dh = abs(int(train.pos[2])-int(self.pos[2]))
-                if dh != 0:
-                    sprite.set_alpha(clamp(255*(1-dh*2/tile_size), 0,255))
+            if (self.pos[0]-21*tile_size < train.pos[0] < self.pos[0]+21*tile_size and 
+                self.pos[1]-21*tile_size < train.pos[1] < self.pos[1]+21*tile_size and
+                train.type != None): # если видно
+
                 
-                draw_queue.append([
-                    #round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2),
-                    [
-                        train.pos[0]+abs(train.size[0]*math.sin(math.radians(train.angle)))/2+abs(train.size[1]*math.cos(math.radians(train.angle)))/2,
-                        train.pos[1]+abs(train.size[0]*math.cos(math.radians(train.angle)))/2+abs(train.size[1]*math.sin(math.radians(train.angle)))/2,
-                    ],
-                    sprite,
-                    (
-                    round(center_pos[0]-array_entry[0][angle][0].get_width()//2),
-                    round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2)
+                dh = abs(int(train.pos[2])-int(self.pos[2])) # разница высот
+                if 0 <= dh*2 <= tile_size:
+                     
+                    angle = round(train.angle//1) 
+                    angle %= 360
+                    array_entry = self.train_sprites[train.type] #нормализация угла
+                    
+                    center_pos = self.translate_to(train.pos) #центровина вагона
+                    sprite = pg.transform.scale(array_entry[0][angle][0],(
+                        array_entry[0][angle][0].get_width(),
+                        array_entry[0][angle][0].get_height())
                     )
-                ])
+                    if dh != 0:
+                        sprite.set_alpha(clamp(255*(1-dh*2/tile_size), 0,255))
+                    
+                    draw_queue.append([
+                        [
+                            train.pos[0]+abs(train.size[0]*math.sin(math.radians(train.angle)))/2+abs(train.size[1]*math.cos(math.radians(train.angle)))/2,
+                            train.pos[1]+abs(train.size[0]*math.cos(math.radians(train.angle)))/2+abs(train.size[1]*math.sin(math.radians(train.angle)))/2,
+                        ],
+                        sprite,
+                        (
+                        round(center_pos[0]-array_entry[0][angle][0].get_width()//2),
+                        round(center_pos[1]-array_entry[0][angle][1]-array_entry[1]*2)
+                        )
+                    ])
         
 
-        for element in sorted(draw_queue,key=lambda x:x[0][1]+x[0][0]):#(x[0][0], x[0][1])):
+        for element in sorted(draw_queue,key=lambda x:x[0][1]+x[0][0]):
             screen.blit(element[1],element[2])
 
         draw_queue = []
@@ -357,14 +327,15 @@ class Camera():
         for element in sorted(draw_queue,key=lambda x:x[0]):
             screen.blit(element[1],element[2])
         
+        # без масштабирование потому что FPS 60 -> ~0
         #for p in z:
         #    pg.draw.circle(screen,(255,0,0),p[0],6)
         #    pg.draw.line(screen,(255,0,0),p[0],p[1],4)
-        if self.scale > 1:
-            dw, dh = [int(i/self.scale) for i in self.camera_size]
-            screen = pg.transform.scale(screen.subsurface(dw/2,dh/2,dw,dh),self.camera_size)
-        elif self.scale < 1:
-            screen = pg.transform.scale(screen,self.camera_size)
+        #if self.scale > 1:
+        #    dw, dh = [int(i/self.scale) for i in self.camera_size]
+        #    screen = pg.transform.scale(screen.subsurface(dw/2,dh/2,dw,dh),self.camera_size)
+        #elif self.scale < 1:
+        #    screen = pg.transform.scale(screen,self.camera_size)
 
         if self.flag:screen.blit(self.z,(0,0))
 
