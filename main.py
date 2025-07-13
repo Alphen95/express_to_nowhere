@@ -11,7 +11,7 @@ import leitmotifplus as leitmotif
 import json
 
 win_size = (0,0)#(800,600)
-version = "0.3.0.9 Oct-Dim prerelease"
+version = "0.3.1 October Av, Dim & Hekiket lines"
 
 
 pg.init()
@@ -59,9 +59,9 @@ sprite_load_params = [ # name - (x|y) - (stacks|offset|repeats) - rotation/flip 
     ["sign_y", (0,15), (6,24,1), 90, ct],
     
     ["u_base", (1,12), (1,0,1), 0, ct],
-    ["u_corner_a", (1,13), (1,0,1), 270, ct],
+    ["u_corner_a", (1,13), (1,0,1), 90, ct],
     ["u_corner_b", (1,13), (1,0,1), 180, ct],
-    ["u_corner_c", (1,13), (1,0,1), 90, ct],
+    ["u_corner_c", (1,13), (1,0,1), 270, ct],
     ["u_corner_d", (1,13), (1,0,1), 0, ct],
     ["u_wall_a", (1,14), (1,0,6), 0, bg],
     ["u_wall_b", (1,14), (1,0,6), 270, bg],
@@ -122,7 +122,7 @@ sprite_load_params = [ # name - (x|y) - (stacks|offset|repeats) - rotation/flip 
     ["tast_xl", (11,0), (24,6,1), (1,0), fg],
     
     ["bnpk_xr", (12,0), (30,0,1), 0, bg],
-    ["bnpk_xl", (12,0), (30,0,1), (1,0), fg],
+    ["bnpk_xl", (12,0), (6,0,1), (1,0), fg],
     ["bnpk_pillar_xr", (13,0), (24,6,1), 0, bg],
     ["bnpk_pillar_xl", (13,0), (24,6,1), (1,0), fg],
     
@@ -174,8 +174,8 @@ for param_pack in sprite_load_params:
 
 #player.train_sprites["Sv_p"] = player.render_train(el_s_sheet,((32,98),28 ,2))
 #player.train_sprites["Sv_m"] = player.render_train(el_sp_sheet,((32,98),32 ,2))
-player.train_sprites["uvm8-m"] = player.render_train(uvm8m_sheet,((22,104),21 ,2))
-player.train_sprites["uvm8-p"] = player.render_train(uvm8p_sheet,((22,104),21 ,2))
+player.train_sprites["uvm8-m"] = player.render_train(uvm8m_sheet,((24,104),21 ,2))
+player.train_sprites["uvm8-p"] = player.render_train(uvm8p_sheet,((24,104),21 ,2))
 
 
 with open("world.json") as f:
@@ -248,8 +248,8 @@ a = pg.Surface(win_size, pg.SRCALPHA)
 a.fill((64,64,64,32))
 
 train_spawn_info = [
-    [[("uvm8-m",False,True,True),("uvm8-p",True,True,True),("uvm8-m",True,True,True)],105*4],
-    [[("uvm8-m",False,True,True),("uvm8-m",True,True,True),],105*4]
+    [[("uvm8-m",False,True,True),("uvm8-p",True,True,True),("uvm8-m",True,True,True)],106*4],
+    [[("uvm8-m",False,True,True),("uvm8-m",True,True,True),],106*4]
 ]
 
 consists = {}
@@ -260,7 +260,7 @@ follow = True
 spawn = False
 
 spawnpoints = [
-    ["Energy College", 288],["City Culture Hall", 275],["Zorge St-October Av [OCT]", 220],["Halle St-October Av-1", 1], ["Balanovo-Park", 124], ["Milowsk Hwy", 160], # October Av & Dim
+    ["Energy College", 288],["City Culture Hall", 275], ["Balanovo-Park", 124], ["Milowsk Hwy", 160], # October Av & Dim
 ]
 trains = ["UVM-8 (3 cars)", "UVM-8 (2 cars)"]
 
@@ -316,12 +316,12 @@ while working:
 
             if evt.key == pg.K_z and curc != -1: consists[curc].velocity_vector = [0,-1,1][consists[curc].velocity_vector]
 
-            if evt.key == pg.K_LEFT and follow:
+            if evt.key == pg.K_LEFTBRACKET and follow:
                 consists[curc].route = list(route_map.keys())[(list(route_map.keys()).index(consists[curc].route)+1)%len(route_map)]
                 if consists[curc].route in route_switches:consists[curc].routing_switches = route_switches[consists[curc].route]
                 else: consists[curc].routing_switches = {}
                 
-            if evt.key == pg.K_RIGHT and follow:
+            if evt.key == pg.K_RIGHTBRACKET and follow:
                 consists[curc].route = list(route_map.keys())[(list(route_map.keys()).index(consists[curc].route)-1)%len(route_map)]
                 if consists[curc].route in route_switches:consists[curc].routing_switches = route_switches[consists[curc].route]
                 else: consists[curc].routing_switches = {}
@@ -362,7 +362,7 @@ while working:
 
     if follow and curc != -1:
         screen.blit(consists[curc].internal.render_graphics(screen, screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released]),(0,0))
-        consists[curc].switch = kbd[pg.K_LALT]# if consists[curc].route != None else 0
+        consists[curc].switch = kbd[pg.K_LALT] if consists[curc].route != None else 0
 
     fps = round(clock.get_fps())
     speed = 16 if not kbd[pg.K_LALT] else 1
@@ -451,8 +451,8 @@ while working:
             ptext = font.render(line,True,(240,240,240),(0,0,0))
             screen.blit(ptext,(20,20+30*enum))
 
-        #if curc != -1 and consists[curc].route == None: altstate = "DISABLED"
         altstate = 'pressed' if kbd[pg.K_LALT] else 'released'
+        if curc != -1 and consists[curc].route != None: altstate = "DISABLED"
         ptext = font.render(f"alt {altstate}",True,(240,240,240),(84,109,255) if altstate == 'pressed' else(0,0,0))
         screen.blit(ptext,(20,20+30*len(z)))
 
