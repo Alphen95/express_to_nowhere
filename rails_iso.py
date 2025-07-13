@@ -89,36 +89,44 @@ class Rail:
             #two-axial actions
 
             if self.s_axis == "y" and self.e_axis == "x":
-                if ma_x == self.s_pos[0]:
-                    # u-shape
-                    self.render_points = [
-                        self.s_pos,
-                        (ma_x, self.e_pos[1], (a[2]+b[2])/2),
-                        self.e_pos
-                    ]
-                else:
-                    # n-shape
-                    self.render_points = [
-                        self.s_pos, 
-                        (mi_x, self.e_pos[1], (a[2]+b[2])/2), 
-                        self.e_pos
-                    ]
+                pass
+            else:
+                self.s_pos, self.e_pos = self.e_pos, self.s_pos
+                self.s_links, self.e_links = self.e_links, self.s_links
+                self.s_axis, self.e_axis = self.e_axis, self.s_axis
+        
+            if ma_x == self.s_pos[0]:
+                # u-shape
+                self.render_points = [
+                    self.s_pos,
+                    (ma_x, self.s_pos[1]+(self.e_pos[1]-self.s_pos[1])*0.55, (a[2]+b[2])/2),
+                    (mi_x+(ma_x-mi_x)*0.55, self.e_pos[1], (a[2]+b[2])/2),
+                    self.e_pos
+                ]
+            else:
+                # n-shape
+                self.render_points = [
+                    self.s_pos, 
+                    (mi_x, self.s_pos[1]+(self.e_pos[1]-self.s_pos[1])*0.55, (a[2]+b[2])/2),
+                    (mi_x+(ma_x-mi_x)*0.45, self.e_pos[1], (a[2]+b[2])/2),
+                    self.e_pos
+                ]
                 
-            elif self.s_axis == "x" and self.e_axis == "y":
-                if ma_y == self.s_pos[1]:
-                    # <-shape
-                    self.render_points = [
-                        self.s_pos, 
-                        (self.e_pos[0], ma_y, (a[2]+b[2])/2), 
-                        self.e_pos
-                    ]
-                else:
-                    # >-shape
-                    self.render_points = [
-                        self.s_pos, 
-                        (self.e_pos[0], mi_y, (a[2]+b[2])/2), 
-                        self.e_pos
-                    ]
+            #elif self.s_axis == "x" and self.e_axis == "y":
+            #    if ma_y == self.s_pos[1]:
+            #        # <-shape
+            #        self.render_points = [
+            #            self.s_pos, 
+            #            (self.e_pos[0], ma_y, (a[2]+b[2])/2), 
+            #            self.e_pos
+            #        ]
+            #    else:
+            #        # >-shape
+            #        self.render_points = [
+            #            self.s_pos, 
+            #            (self.e_pos[0], mi_y, (a[2]+b[2])/2), 
+            #            self.e_pos
+            #        ]
 
 
             #self.render_points = [start, ((start[0]+end[0])/2,start[1]), ((start[0]+end[0])/2,end[1]), end]

@@ -3,6 +3,10 @@ import pygame as pg
 import threading
 import math
 
+def sgn(x):
+    if x > 0: return 1
+    elif x < 0: return -1
+    else: return 0
 
 class EditorTable:
     def __init__(self, heading, objects_a, objects_b, wire_amt, font):
@@ -149,9 +153,13 @@ class InternalSystem:
         self.rk_channel = pg.mixer.Channel(0)
         self.eng_channel = pg.mixer.Channel(1)
         self.eng_sound = 0
+        self.rk_channel.set_volume(0.1)
+        self.dumb = False #глупенький режим
 
         self.km = { # ВСЕ параметры КМ
             "pos":0,
+            "dumbdraw":[11,29,9,-1],
+            "dumbmapout":10000,
             "draw":[
                 [11,30],
                 [11,27],
@@ -163,14 +171,18 @@ class InternalSystem:
             ],
             "delta": [2,10],
             "mapout":[
-                3,
                 1,
-                2
+                2,
+                3,
+                4,
+                5
             ],
         }
 
         self.tk = { # ВСЕ параметры ТК
             "pos":0,
+            "dumbdraw":[82,9,29,1],
+            "dumbmapout":8,
             "draw":[
                 [82,9],
                 [82,14],
@@ -180,11 +192,11 @@ class InternalSystem:
             ],
             "delta": [15,10],
             "mapout":[
-                (0, 1.2),
-                (1.75, 1.2),
-                (3.5, 1.2),
-                (5.25, 1.2),
-                (7, 1.2),
+                (0, 2),
+                (1.75, 2),
+                (3.5, 2),
+                (5.25, 2),
+                (7, 2),
             ],
             #"mapout":[
             #    (0, 0.7),
@@ -209,6 +221,11 @@ class InternalSystem:
         for i in range(30): self.sounds[f"engine_{i}"] = pg.mixer.Sound(f"res/sound/engine_{i}.wav")
 
         for sound in self.sounds: self.sounds[sound].set_volume(0.05)
+        self.sounds["rk_start"].set_volume(0.02)
+        self.sounds["rk_stop"].set_volume(0.02)
+        self.sounds["rk_spin"].set_volume(0.02)
+        self.sounds["relay_on"].set_volume(0.02)
+        self.sounds["relay_off"].set_volume(0.02)
 
         self.working = True
         self.thread = threading.Thread(target=self.cycle)
@@ -263,11 +280,11 @@ class InternalSystem:
         while self.working:
             self.calculate_tilenet()
 
-            if self.editing == -1:
+            if self.editing == -1 and not self.dumb:
                 self.wires[0] = 0
                 wire_changes = self.generate_wire_block(self.wire_amt)
                 sum_resistance = 0
-                connection_mode = 1
+                connection_mode = 0
                 engines = []
                 circuit_bridged = True
 
@@ -335,6 +352,21 @@ class InternalSystem:
                             if obj.state > 0 and self.wires["+"]:
                                 wire_changes[target] +=1
 
+                    
+                    elif obj.type == "combiner":
+                        if obj.inputs != []:
+                            old_state = obj.state
+
+                            if self.wires[obj.inputs[1]]: obj.state = 2
+                            elif self.wires[obj.inputs[0]]: obj.state = 1
+                            else: obj.state = 0
+
+                            if old_state != obj.state: 
+                                if obj.state == 0: self.sounds["relay_off"].play()
+                                else: self.sounds["relay_on"].play()
+                            
+                            connection_mode = obj.state
+
                     elif obj.type == "elswitch":
                         if obj.outputs != [] and obj.outputs[0] not in ["+","-"]:
                             target = obj.outputs[0]
@@ -346,10 +378,10 @@ class InternalSystem:
                             spin = 0
                             rk_pos = int((obj.state+5)/10)
                             if self.wires[obj.inputs[0]] and (obj.info[0]-1)*10 > obj.state+1:
-                                obj.state+=0.5
+                                obj.state+=1
                                 spin += 1
                             if self.wires[obj.inputs[1]] and obj.state > 0:
-                                obj.state-=0.5
+                                obj.state-=1
                                 spin -= 1
 
                             if obj.old_state == 0 and spin != 0:
@@ -433,21 +465,32 @@ class InternalSystem:
                     if self.eng_sound > 0: self.eng_channel.play(self.sounds[f"engine_{min(self.eng_sound,30)-1}"],-1)
                     else: self.eng_channel.stop()
                     
+                tick = 1/20
+                self.pressure += (self.tk["mapout"][self.tk["pos"]][0]-self.pressure)*self.tk["mapout"][self.tk["pos"]][1]*tick
+                if self.pressure < 0.2 and self.tk["mapout"][self.tk["pos"]][0] == 0: self.pressure = 0
+                self.pressure = round(self.pressure, 2)
 
 
-            else:
+            elif self.editing != -1 :
                 self.rk_channel.stop()
                 self.eng_channel.stop()
                 self.current = 0
                 self.torque = 0
+                self.pressure = 0
 
-            tick = 1/20
+            elif self.dumb:
+                #print("a")
+                if math.ceil(self.axial_speed/7) != self.eng_sound:
+                    self.eng_sound = math.ceil(self.axial_speed/7)
+                    if self.eng_sound > 0: self.eng_channel.play(self.sounds[f"engine_{min(self.eng_sound,30)-1}"],-1)
+                    else: self.eng_channel.stop()
 
-            self.pressure += (self.tk["mapout"][self.tk["pos"]][0]-self.pressure)*self.tk["mapout"][self.tk["pos"]][1]*tick
-            if self.pressure < 0.2 and self.tk["mapout"][self.tk["pos"]][0] == 0: self.pressure = 0
-            self.pressure = round(self.pressure, 2)
+
 
             pg.time.wait(50)
+
+        self.rk_channel.stop()
+        self.eng_channel.stop()
 
     def draw_grid(self):
         surf = pg.Surface([i*self.tile_size for i in self.display_size])
@@ -493,7 +536,7 @@ class InternalSystem:
             e_obj = self.objects[self.editing]
             tl = self.tooltip_lines
 
-            if e_obj.type in ["gr_relay", "me_relay", "hv_relay", "cu_relay", "resistor", "signlamp", "elswitch"]:
+            if e_obj.type in ["gr_relay", "me_relay", "hv_relay", "cu_relay", "resistor", "signlamp", "elswitch", "combiner"]:
                 if self.editor_window == None:
                     left = []
                     right = []
@@ -519,7 +562,6 @@ class InternalSystem:
                     if e_obj.outputs != []: 
                         left.append(tl["outputs"])
                         right.append([["wirelen_box", j, f"outputs:{i}"] for i, j in enumerate(e_obj.outputs)])
-
 
                     self.editor_window = EditorTable(tl["names"][e_obj.sprite], left, right, self.wire_amt, self.font)
 
@@ -570,84 +612,122 @@ class InternalSystem:
                     
         return surf
 
-    def render_graphics(self, screen_size, draw_pos, kbd, kbd_pressed, mouse):
-        draw_surf = pg.Surface(screen_size, pg.SRCALPHA)
+    def render_graphics(self, target, screen_size, draw_pos, kbd, kbd_pressed, mouse):
+        draw_surf = target
 
-        if "box" in self.ui_sprites:
-            size = self.ui_sprites["box"].get_size()
-            base_pos = [
-                screen_size[0]/2-size[0]/2, 
-                screen_size[1]-size[1]
-            ]
-            draw_surf.blit(self.ui_sprites["box"], base_pos)
+        if not self.dumb:
 
-            if "km" in self.ui_sprites:
-                img = self.ui_sprites["km"]
-                draw_surf.blit(img, (
-                    base_pos[0]+(self.km["draw"][self.km["pos"]][0]-self.km["delta"][0])*self.ui_scale,
-                    base_pos[1]+(self.km["draw"][self.km["pos"]][1]-self.km["delta"][1])*self.ui_scale
-                ))
+            if "box" in self.ui_sprites:
+                size = self.ui_sprites["box"].get_size()
+                base_pos = [
+                    screen_size[0]/2-size[0]/2, 
+                    screen_size[1]-size[1]
+                ]
+                draw_surf.blit(self.ui_sprites["box"], base_pos)
 
-            if "tk" in self.ui_sprites:
-                img = self.ui_sprites["tk"]
-                draw_surf.blit(img, (
-                    base_pos[0]+(self.tk["draw"][self.tk["pos"]][0]-self.tk["delta"][0])*self.ui_scale,
-                    base_pos[1]+(self.tk["draw"][self.tk["pos"]][1]-self.tk["delta"][1])*self.ui_scale
-                ))
+                if "km" in self.ui_sprites:
+                    img = self.ui_sprites["km"]
+                    draw_surf.blit(img, (
+                        base_pos[0]+(self.km["draw"][self.km["pos"]][0]-self.km["delta"][0])*self.ui_scale,
+                        base_pos[1]+(self.km["draw"][self.km["pos"]][1]-self.km["delta"][1])*self.ui_scale
+                    ))
+
+                if "tk" in self.ui_sprites:
+                    img = self.ui_sprites["tk"]
+                    draw_surf.blit(img, (
+                        base_pos[0]+(self.tk["draw"][self.tk["pos"]][0]-self.tk["delta"][0])*self.ui_scale,
+                        base_pos[1]+(self.tk["draw"][self.tk["pos"]][1]-self.tk["delta"][1])*self.ui_scale
+                    ))
 
 
-        if self.open:
+            if self.open:
 
-            m_old = mouse[0]
-            d = self.draw_grid()
-            if type(draw_pos) == str:
-                draw_pos = [screen_size[0]/2-d.get_width()/2, screen_size[1]/2-d.get_height()/2]
-            draw_surf.blit(d, draw_pos)
-            mouse = [[mouse[0][i]-draw_pos[i] for i in (0,1)], mouse[1], mouse[2], mouse[3]]
-            e = self.draw_editor(mouse, kbd)
-            draw_surf.blit(e, draw_pos)
+                m_old = mouse[0]
+                d = self.draw_grid()
+                if type(draw_pos) == str:
+                    draw_pos = [screen_size[0]/2-d.get_width()/2, screen_size[1]/2-d.get_height()/2]
+                draw_surf.blit(d, draw_pos)
+                mouse = [[mouse[0][i]-draw_pos[i] for i in (0,1)], mouse[1], mouse[2], mouse[3]]
+                e = self.draw_editor(mouse, kbd)
+                draw_surf.blit(e, draw_pos)
 
-            if self.held != -1:
-                obj = self.objects[self.held]
-                sp = self.sprites[obj.sprite]
-                draw_surf.blit(sp,[m_old[i]-self.tile_size/2 for i in [0,1]])
+                if self.held != -1:
+                    obj = self.objects[self.held]
+                    sp = self.sprites[obj.sprite]
+                    draw_surf.blit(sp,[m_old[i]-self.tile_size/2 for i in [0,1]])
 
-            mod = {
-                "alt":kbd_pressed[pg.K_LALT] or kbd_pressed[pg.K_RALT], 
-                "ctrl":kbd_pressed[pg.K_LCTRL] or kbd_pressed[pg.K_RCTRL], 
-            }
+                mod = {
+                    "alt":kbd_pressed[pg.K_LALT] or kbd_pressed[pg.K_RALT], 
+                    "ctrl":kbd_pressed[pg.K_LCTRL] or kbd_pressed[pg.K_RCTRL], 
+                }
 
-            if mouse[2] and not(mod["alt"] or mod["ctrl"]): 
-                oe = self.locate(mouse[0])
-                if oe != -1:
-                    if self.objects[oe].type in "elswitch":
-                        self.objects[oe].state = abs(1-self.objects[oe].state)
+                if mouse[2] and not(mod["alt"] or mod["ctrl"]): 
+                    oe = self.locate(mouse[0])
+                    if oe != -1:
+                        if self.objects[oe].type in "elswitch":
+                            self.objects[oe].state = abs(1-self.objects[oe].state)
 
-            elif mod["alt"]:
-                if mouse[2]: 
-                    self.held = self.locate(mouse[0])
-                elif mouse[3]: 
-                    self.move(mouse[0])
+                elif mod["alt"]:
+                    if mouse[2]: 
+                        self.held = self.locate(mouse[0])
+                    elif mouse[3]: 
+                        self.move(mouse[0])
 
-            elif mouse[2] and mod["ctrl"] and not mod["alt"] and self.editing == -1: 
-                self.editing = self.locate(mouse[0])
-                
-            elif self.editing == -1:
-                if not mod["alt"]: self.held = -1
-                tt = self.tooltip(mouse[0])
-                if tt != None: 
-                    tt_pos = [min(screen_size[i]-tt.get_size()[i],m_old[i]+20) for i in (0,1)]
-                    draw_surf.blit(tt,tt_pos)
+                elif mouse[2] and mod["ctrl"] and not mod["alt"] and self.editing == -1: 
+                    self.editing = self.locate(mouse[0])
+                    
+                elif self.editing == -1:
+                    if not mod["alt"]: self.held = -1
+                    tt = self.tooltip(mouse[0])
+                    if tt != None: 
+                        tt_pos = [min(screen_size[i]-tt.get_size()[i],m_old[i]+20) for i in (0,1)]
+                        draw_surf.blit(tt,tt_pos)
+            else:
+                pass
+
+            if pg.K_e in kbd: self.open = 1 - self.open
+
+            if pg.K_UP in kbd and self.km["pos"] < len(self.km["mapout"])-1: self.km["pos"] += 1
+            if pg.K_DOWN in kbd and self.km["pos"] > 0: self.km["pos"] -= 1
+            
+            if pg.K_f in kbd and self.tk["pos"] < len(self.tk["mapout"])-1: self.tk["pos"] += 1
+            if pg.K_r in kbd and self.tk["pos"] > 0: self.tk["pos"] -= 1
         else:
-            pass
+            if "box" in self.ui_sprites:
+                size = self.ui_sprites["box"].get_size()
+                base_pos = [
+                    screen_size[0]/2-size[0]/2, 
+                    screen_size[1]-size[1]
+                ]
+                draw_surf.blit(self.ui_sprites["box"], base_pos)
 
-        if pg.K_e in kbd: self.open = 1 - self.open
+                if "km" in self.ui_sprites:
+                    img = self.ui_sprites["km"]
+                    draw_surf.blit(img, (
+                        base_pos[0]+(self.km["dumbdraw"][0]-self.km["delta"][0])*self.ui_scale,
+                        base_pos[1]+(self.km["pos"]-self.km["delta"][1])*self.ui_scale
+                    ))
 
-        if pg.K_UP in kbd and self.km["pos"] < len(self.km["mapout"])-1: self.km["pos"] += 1
-        if pg.K_DOWN in kbd and self.km["pos"] > 0: self.km["pos"] -= 1
-        
-        if pg.K_f in kbd and self.tk["pos"] < len(self.tk["mapout"])-1: self.tk["pos"] += 1
-        if pg.K_r in kbd and self.tk["pos"] > 0: self.tk["pos"] -= 1
+                if "tk" in self.ui_sprites:
+                    img = self.ui_sprites["tk"]
+                    draw_surf.blit(img, (
+                        base_pos[0]+(self.tk["dumbdraw"][0]-self.tk["delta"][0])*self.ui_scale,
+                        base_pos[1]+(self.tk["pos"]-self.tk["delta"][1])*self.ui_scale
+                    ))
+
+            if kbd_pressed[pg.K_UP]:
+                self.torque = self.km["dumbmapout"]
+                self.km["pos"] += abs(self.km["dumbdraw"][3])*sgn(self.km["dumbdraw"][2]-self.km["pos"])
+            else:
+                self.torque = 0
+                self.km["pos"] += abs(self.km["dumbdraw"][3])*sgn(self.km["dumbdraw"][1]-self.km["pos"])
+
+            if kbd_pressed[pg.K_DOWN]:
+                self.pressure = self.tk["dumbmapout"]
+                self.tk["pos"] += abs(self.tk["dumbdraw"][3])*sgn(self.tk["dumbdraw"][2]-self.tk["pos"])
+            else:
+                self.pressure = 0
+                self.tk["pos"] += abs(self.tk["dumbdraw"][3])*sgn(self.tk["dumbdraw"][1]-self.tk["pos"])
 
         return draw_surf
 

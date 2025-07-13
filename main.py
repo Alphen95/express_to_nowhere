@@ -4,14 +4,14 @@ import pygame as pg
 import os
 import time
 import random
-import leitmotifplus as leitmotif
+import train
 import isometry as isometry
 import rails_iso as rails_m
-import train
+import leitmotifplus as leitmotif
 import json
 
 win_size = (0,0)#(800,600)
-version = "0.2.8.1 polishing"
+version = "0.3.0.9 Oct-Dim prerelease"
 
 
 pg.init()
@@ -25,88 +25,167 @@ win_size = screen.get_size()
 win_size = (win_size[0],win_size[1])
 
 working = True
+screenshot_mode = False
 tile_size = 256
 ct, fg, bg = (tile_size/2, tile_size/2), (tile_size, tile_size), (0,0)
 
 route_map = {
-    None:[(10,10,10),(255,255,255),"X"],
-
-    #"c_old":[(75,199,123),(1,1,1),"CC"],
-
-    #"a":[(9,59,93),(255,255,255),"A"],
-    #"c":[(9,59,93),(255,255,255),"C"],
-    #"h":[(9,59,93),(255,255,255),"H"],
-
-    "b":[(242,99,35),(255,255,255),"B"],
-    "d":[(242,99,35),(255,255,255),"D"],
-
-    "e":[(31,65,155),(255,255,255),"E"],
-    "k":[(31,65,155),(255,255,255),"K"],
-
-    #"j":[(154,103,51),(255,255,255),"E"],
-    #"m":[(154,103,51),(255,255,255),"K"],
-
-    #"n":[(246,210,23),(0,0,0),"N"],
-    #"q":[(246,210,23),(0,0,0),"Q"],
-    
-    #"l":[(167,170,172),(255,255,255),"L"],
-    #"l_exp":[(167,170,172),(255,255,255),"Lx"],
-
-    #"1":[(238,51,48),(255,255,255),"1"],
-    #"2":[(238,51,48),(255,255,255),"2"],
-    #"3":[(238,51,48),(255,255,255),"3"],
-    #"9":[(238,51,48),(255,255,255),"9"],
-    
-    "4":[(14,148,71),(255,255,255),"4"],
-    "5":[(14,148,71),(255,255,255),"5"],
-    "6":[(14,148,71),(255,255,255),"6"],
-
-    #"8":[(73,218,247),(255,255,255),"8"],
-
-    "7":[(172,66,152),(255,255,255),"7"],
-    "7_exp":[(172,66,152),(255,255,255),"7x"],
-    "11":[(172,66,152),(255,255,255),"11"],
+    None:[" X "],
+    "k":["(K)"],
+    "m":["(M)"],
+    "j":["<J>"],
 }
 
 tile_sheet = pg.image.load("res/tiles.png")
 el_s_sheet = pg.image.load("res/el_s.png")
 el_sp_sheet = pg.image.load("res/el_sp.png")
-plt0_sheet = pg.image.load("res/plt0.png")
-plt1_sheet = pg.image.load("res/plt1.png")
-plt3_sheet = pg.image.load("res/plt3.png")
+uvm8m_sheet = pg.image.load("res/uvm8.png")
+uvm8p_sheet = pg.image.load("res/uvm8p.png")
 
 player = isometry.Camera(win_size)
-player.sprites["under_base"] = player.render_tile(tile_sheet.subsurface(1248,128,32,32),(1,0,4),0)
-player.sprites["under_crna"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,0)
-player.sprites["under_crnb"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,90)
-player.sprites["under_crnc"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,180)
-player.sprites["under_crnd"] = player.render_tile(tile_sheet.subsurface(1248,160,32,32),(1,0,4),0,270)
 
-player.sprites["rock"] = player.render_tile(tile_sheet.subsurface(0,128,1280,32),(32,0,4),1)
-player.sprites["platform"] = player.render_tile(tile_sheet.subsurface(0,160,96,32),(3,0,4),ct)
-player.sprites["platform_e_x_l"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),fg,0)
-player.sprites["platform_e_x_r"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),bg,180)
-player.sprites["platform_e_y_r"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),fg,270)
-player.sprites["platform_e_y_l"] = player.render_tile(tile_sheet.subsurface(0,192,96,32),(3,0,4),bg,90)
-player.sprites["platform_s_a"] = player.render_tile(tile_sheet.subsurface(96,192,448,32),(14,0,4),ct,0)
-player.sprites["platform_s_b"] = player.render_tile(tile_sheet.subsurface(96,224,448,32),(14,0,4),ct,180)
-player.sprites["platform_s_c"] = player.render_tile(tile_sheet.subsurface(96,256,448,32),(14,0,4),ct,90)
-player.sprites["platform_s_d"] = player.render_tile(tile_sheet.subsurface(96,288,448,32),(14,0,4),ct,270)
+sprite_load_params = [ # name - (x|y) - (stacks|offset|repeats) - rotation/flip - alignment
+    ["cyrok_cx", (0,0), (5,6,1), 0, ct],
+    ["cyrok_cy", (0,0), (5,6,1), 90, ct],
+    ["cyrok_xr", (0,5), (5,6,1), 0, ct],
+    ["cyrok_xl", (0,5), (5,6,1), 180, ct],
+    ["cyrok_yl", (0,5), (5,6,1), 90, ct],
+    ["cyrok_yr", (0,5), (5,6,1), 270, ct],
+    ["halfcyrok_xr", (0,10), (5,6,1), 0, ct],
+    ["halfcyrok_xl", (0,10), (5,6,1), 180, ct],
+    ["halfcyrok_yl", (0,10), (5,6,1), 90, ct],
+    ["halfcyrok_yr", (0,10), (5,6,1), 270, ct],
+    ["sign_x", (0,15), (6,24,1), 0, ct],
+    ["sign_y", (0,15), (6,24,1), 90, ct],
+    
+    ["u_base", (1,12), (1,0,1), 0, ct],
+    ["u_corner_a", (1,13), (1,0,1), 270, ct],
+    ["u_corner_b", (1,13), (1,0,1), 180, ct],
+    ["u_corner_c", (1,13), (1,0,1), 90, ct],
+    ["u_corner_d", (1,13), (1,0,1), 0, ct],
+    ["u_wall_a", (1,14), (1,0,6), 0, bg],
+    ["u_wall_b", (1,14), (1,0,6), 270, bg],
+    ["u_wall_c", (1,14), (1,0,6), 180, fg],
+    ["u_wall_d", (1,14), (1,0,6), 90, fg],
+
+    ["u_fence_a", (1,15), (4,0,1), 0, bg],
+    ["u_fence_b", (1,15), (4,0,1), 90, bg],
+    ["u_fence_c", (1,15), (4,0,1), 180, fg],
+    ["u_fence_d", (1,15), (4,0,1), 270, fg],
+    
+    ["plt",     (1,0), (6,0,1),  0, ct],
+    ["plt_exl", (1,6), (6,0,1),  0, fg],
+    ["plt_exr", (1,6), (6,0,1), 180, bg],
+    ["plt_eyl", (1,6), (6,0,1), 270, fg],
+    ["plt_eyr", (1,6), (6,0,1),  90, bg],
+    
+    ["soundwall_xl", (2,0), (29,0,1),  0, fg],
+    ["soundwall_xr", (2,0), ( 6,0,1),180, bg],
+    ["soundwall_yl", (2,0), (29,0,1),270, bg],
+    ["soundwall_yr", (2,0), ( 6,0,1), 90, fg],
+    
+    ["soundwall_sign_xr", (3,0), (29,0,1), 180, bg],
+    ["soundwall_sign_yl", (3,0), (29,0,1), 270, bg],
+    
+    ["pillar_orange_xl", (0,21), (1,6,24),   0, fg],
+    ["pillar_orange_xr", (0,21), (1,6,24), 180, bg],
+    ["pillar_orange_yl", (0,21), (1,6,24), 270, bg],
+    ["pillar_orange_yr", (0,21), (1,6,24),  90, fg],
+
+    ["pillar_beige_xl", (0,22), (1,6,24),   0, fg],
+    ["pillar_beige_xr", (0,22), (1,6,24), 180, bg],
+    ["pillar_beige_yl", (0,22), (1,6,24), 270, bg],
+    ["pillar_beige_yr", (0,22), (1,6,24),  90, fg],
+    
+    ["hloc-oct_xr", (4,0), (30,0,1),  0, bg],
+    ["hloc-oct_xl", (4,0), (6,0,1),180, fg],
+
+    ["cmkt_xr", (5,0), (24,6,1),  0, bg],
+    ["cmkt_xl", (5,0), (24,6,1),180, fg],
+
+    ["kirv_xr", (6,0), (24,6,1),  0, bg],
+    ["kirv_xl", (6,0), (24,6,1),180, fg],
+    ["kirv_pillar_xr", (0,23), (1,6,24),  0, bg],
+    ["kirv_pillar_xl", (0,23), (1,6,24),180, fg],
+    
+    ["krnh-oct_xr", (7,0), (24,6,1),  0, bg],
+    ["krnh-oct_xl", (7,0), (24,6,1),180, fg],
+    ["krnh-oct_pillar_xr", (8,0), (24,6,1),  0, bg],
+    ["krnh-oct_pillar_xl", (8,0), (24,6,1),180, fg],
+    
+    ["wemb_xr", (9,0), (24,6,1), 0, bg],
+    ["wemb_xl", (9,0), (24,6,1), (1,0), fg],
+    ["wemb_alt_xr", (10,0), (24,6,1), 0, bg],
+    ["wemb_alt_xl", (10,0), (24,6,1), (1,0), fg],
+    
+    ["tast_xr", (11,0), (24,6,1), 0, bg],
+    ["tast_xl", (11,0), (24,6,1), (1,0), fg],
+    
+    ["bnpk_xr", (12,0), (30,0,1), 0, bg],
+    ["bnpk_xl", (12,0), (30,0,1), (1,0), fg],
+    ["bnpk_pillar_xr", (13,0), (24,6,1), 0, bg],
+    ["bnpk_pillar_xl", (13,0), (24,6,1), (1,0), fg],
+    
+    ["dage", (14,0), (24,6,1), 90, ct],
+    ["dage_alt", (15,0), (24,6,1), 90, ct],
+    
+    ["mlwk", (16,0), (24,6,1), 90, ct],
+    ["mlwk_alt", (17,0), (24,6,1), 90, ct],
+    ["mlwk_exit_a", (18,0), (24,6,1), 90, ct],
+    ["mlwk_exit_b", (18,0), (24,6,1), 270, ct],
+    
+    ["unmg_xr", (19,0), (24,6,1), 0, bg],
+    ["unmg_xl", (19,0), (24,6,1), (1,0), fg],
+    ["unmg_pillar_xr", (20,0), (24,6,1), 0, fg],
+    ["unmg_pillar_xl", (20,0), (24,6,1), (1,0), bg],
+    
+    ["usmr_xr", (21,0), (24,6,1), 0, bg],
+    ["usmr_xl", (21,0), (24,6,1), (1,0), fg],
+    ["usmr_pillar_xr", (22,0), (24,6,1), 0, fg],
+    ["usmr_pillar_xl", (22,0), (24,6,1), (1,0), bg],
+    
+    ["zrge-oct_xr", (23,0), (30,0,1), 0, bg],
+    ["zrge-oct_xl", (23,0), (6 ,0,1), (1,0), fg],
+    ["zrge-oct_pillar_xr", (24,0), (24,6,1), 0, fg],
+    ["zrge-oct_pillar_xl", (24,0), (24,6,1), (1,0), bg],
+    
+    ["lesq_xr", (25,0), (24,0,1), 0, bg],
+    ["lesq_xl", (25,0), (24,0,1), (1,0), fg],
+    ["lesq_pillar_xr", (26,0), (24,6,1), 0, fg],
+    ["lesq_pillar_xl", (26,0), (24,6,1), (1,0), bg],
+    
+    ["cuhl_xr", (27,0), (30,0,1), 0, bg],
+    ["cuhl_xl", (27,0), (6 ,0,1), (1,0), fg],
+    ["cuhl_pillar_xr", (0,24), (1,6,24), 0, fg],
+    ["cuhl_pillar_xl", (0,24), (1,6,24), (1,0), bg],
+    
+    ["encg_yl", (28,0), (24,6,1), 0, fg],
+    ["encg_yr", (28,0), (24,6,1), (0,1), bg],
+]
+
+for param_pack in sprite_load_params:
+    player.sprites[param_pack[0]] = player.render_tile(
+        pg.transform.rotate(tile_sheet.subsurface(param_pack[1][0]*64,(param_pack[1][1]+1)*64,64,param_pack[2][0]*64),90) # base surface
+        ,(param_pack[2][0],param_pack[2][1],2,param_pack[2][2]), # stacks-offset-FIXED SCALE-repeats
+        param_pack[4], # rotation/flip
+        param_pack[3]  # align
+    )
+
 
 #player.train_sprites["Sv_p"] = player.render_train(el_s_sheet,((32,98),28 ,2))
 #player.train_sprites["Sv_m"] = player.render_train(el_sp_sheet,((32,98),32 ,2))
-player.train_sprites["plt0"] = player.render_train(plt0_sheet,((32,101),21 ,2))
-player.train_sprites["plt1"] = player.render_train(plt1_sheet,((32,122),21 ,2))
-player.train_sprites["plt3"] = player.render_train(plt3_sheet,((32,97),21 ,2))
+player.train_sprites["uvm8-m"] = player.render_train(uvm8m_sheet,((22,104),21 ,2))
+player.train_sprites["uvm8-p"] = player.render_train(uvm8p_sheet,((22,104),21 ,2))
 
 
 with open("world.json") as f:
     q = json.loads(f.read())
-    rail_nodes, blockmap, underay_map, stations = q
+    rail_nodes, blockmap, aux_blockmap, underay_map, stations = q
 
 with open("route_switches.json") as f: route_switches = json.loads(f.read())
 
 player.blockmap = blockmap
+player.auxmap = aux_blockmap
 player.undermap = underay_map
 
 st_tilemap = {}
@@ -153,6 +232,7 @@ player.rail_nodes = rail_nodes
 player.tracks = tracks
 train.tracks = tracks
 train.nodes = rail_nodes
+player.pos = [0*256,0,0]
 
 player.scale = 1
 
@@ -168,34 +248,21 @@ a = pg.Surface(win_size, pg.SRCALPHA)
 a.fill((64,64,64,32))
 
 train_spawn_info = [
-    [[("plt0",False,True,True),("plt0",True,True,True),("plt0",False,True,True),("plt0",True,True,True)],400],
-    [[("plt1",False,True,True),("plt1",True,True,True),("plt1",False,True,True),("plt1",True,True,True)],488],
-    [[("plt3",False,True,True),("plt3",True,True,True),("plt3",False,True,True),("plt3",True,True,True)],388]
+    [[("uvm8-m",False,True,True),("uvm8-p",True,True,True),("uvm8-m",True,True,True)],105*4],
+    [[("uvm8-m",False,True,True),("uvm8-m",True,True,True),],105*4]
 ]
 
 consists = {}
 curc = -1
 q = 0
 
-spawn_params = {
-    "spawnpoints":[
-        ["78-Waterside", 1227], ["Union Tpke", 1267], ["Pathalassic-Expo", 1350], ["Intervale Sq", 1374], ["Halson Term", 516], #5av-Wside-Garcia
-        ["Kennedy-Main", 840], ["Herald Sq", 1379], ["Eastferry", 1395], ["South Bway", 1969], ["Suffolk Av", 2017] #Kennedy-Union
-    ],
-    "trains":["PLT-0", "PLT-1", "PLT-3"],
-    "pointers":[0,0]
-}
-
-
 follow = True
 spawn = False
 
 spawnpoints = [
-    ["78 St - Waterside", 1227], ["Union Turnpike", 1267], ["Pathalassic Av - Expo", 1350], ["Intervale Square", 1374], ["Halson Terminal", 516], #5av-Wside-Garcia
-    ["Kennedy - Main St", 840], ["Herald Square", 1379], ["Eastferry", 1395], ["Suffolk Av", 2017], #Kennedy-Union
-    ["South Broadway", 1947], ["39 Street - Exchange", 2200], ["Worth Street", 2522], ["Tenporter Yard", [2547,2546,2545,2544]], #Newport
+    ["Energy College", 288],["City Culture Hall", 275],["Zorge St-October Av [OCT]", 220],["Halle St-October Av-1", 1], ["Balanovo-Park", 124], ["Milowsk Hwy", 160], # October Av & Dim
 ]
-trains = ["PLT-0", "PLT-1", "PLT-3"]
+trains = ["UVM-8 (3 cars)", "UVM-8 (2 cars)"]
 
 spawn_window = leitmotif.Window((screen.get_width()-300-4, screen.get_height()/2-75, 300, 242), font, 26, {
     "label_title":{
@@ -211,8 +278,12 @@ spawn_window = leitmotif.Window((screen.get_width()-300-4, screen.get_height()/2
         "rect":[0,"indent+line_height*5.66","w","line_height*2"]
     },
     "button_spawn":{
-        "active":True,"type":"button","text":"Spawn!","align":"center",
-        "rect":["w/4+1","indent+line_height*8","w/2-2","line_height"]
+        "active":True,"type":"button","text":"Spawn","align":"center",
+        "rect":["2","indent+line_height*8","w/2-4","line_height"]
+    },
+    "button_spawn_arcade":{
+        "active":True,"type":"button","text":"Spawn Arcade","align":"center",
+        "rect":["w/2+2","indent+line_height*8","w/2-4","line_height"]
     },
 })
 spawn_window.recalculate()
@@ -236,6 +307,7 @@ while working:
             if evt.key == pg.K_p: follow = not follow
 
             if evt.key == pg.K_s: spawn = not spawn
+            if evt.key == pg.K_o: screenshot_mode = not screenshot_mode
 
             if evt.key == pg.K_DELETE and curc != -1:
                 consists[curc].is_alive = False
@@ -289,7 +361,7 @@ while working:
     kbd = pg.key.get_pressed()
 
     if follow and curc != -1:
-        screen.blit(consists[curc].internal.render_graphics(screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released]),(0,0))
+        screen.blit(consists[curc].internal.render_graphics(screen, screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released]),(0,0))
         consists[curc].switch = kbd[pg.K_LALT]# if consists[curc].route != None else 0
 
     fps = round(clock.get_fps())
@@ -327,7 +399,7 @@ while working:
 
     if spawn:
         spawn_window.update(screen, mouse_state, pressed)
-        if spawn_window.get_state("button_spawn") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "":
+        if spawn_window.get_state("button_spawn") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "" and curc == -1:
             trackid = spawnpoints[spawn_window.objects["list_station"]["items"].index(spawn_window.get_state("list_station"))][1]
             trainpar = train_spawn_info[spawn_window.objects["list_train"]["items"].index(spawn_window.get_state("list_train"))]
             tmp = train.spawn_train(
@@ -339,42 +411,50 @@ while working:
                 consists[curc] = tmp
                 consists[curc].velocity_vector = 1
                 follow = True
+        if spawn_window.get_state("button_spawn_arcade") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "" and curc == -1:
+            trackid = spawnpoints[spawn_window.objects["list_station"]["items"].index(spawn_window.get_state("list_station"))][1]
+            trainpar = train_spawn_info[spawn_window.objects["list_train"]["items"].index(spawn_window.get_state("list_train"))]
+            tmp = train.spawn_train(
+                trainpar[0],
+                trackid if type(trackid) == int else random.choice(trackid), 
+                (trainpar[1],64), font)
+            if tmp != None:
+                curc = random.randint(0, 9999)
+                consists[curc] = tmp
+                consists[curc].velocity_vector = 1
+                consists[curc].internal.dumb = True
+                follow = True
 
 
     if curc != -1:
         bh = 20
-        maxchar = 30
+        maxchar = 34
         dlt = int(char.get_width()*1)
-        w = char.get_width()*3+dlt*(maxchar)+char.get_height()
+        w = dlt*(maxchar)+char.get_height()
         h = char.get_height()*1.5
         bx = screen.get_width()-w-20
         pg.draw.rect(screen, (128,128,128), (bx-4, bh-4, w+8, h+8))
         pg.draw.rect(screen, (96,96,96), (bx, bh, w, h))
-        name = ""
+        name = route_map[consists[curc].route][0]+" "
         if player_block in st_tilemap:
-            name = st_tilemap[player_block][0]
-
-        route = consists[curc].route
-        pg.draw.rect(screen, route_map[route][0], (bx+char.get_width(), bh+char.get_height()*0.25, char.get_height(), char.get_height()))
-        line = sfont.render(route_map[route][2], True, route_map[route][1])
-        screen.blit(line, (bx+char.get_width()+char.get_height()/2-line.get_width()/2, bh+char.get_height()*0.75-line.get_height()/2))
+            name += st_tilemap[player_block][0]
         
         for i in range(maxchar):
-            pg.draw.rect(screen, (91,127,0), (bx+char.get_width()+char.get_height()+dlt*(i+1), bh+char.get_height()*0.25, char.get_width(), char.get_height()))
+            pg.draw.rect(screen, (91,127,0), (bx+char.get_height()/2+dlt*(i), bh+char.get_height()*0.25, char.get_width(), char.get_height()))
             if i < len(name):
                 let = dfont.render(name[i].upper(), True, (182,255,0))
-                screen.blit(let, (bx+char.get_width()+char.get_height()+dlt*(i+1.5)-let.get_width()/2, bh+char.get_height()*0.25))
+                screen.blit(let, (bx+char.get_height()/2+dlt*(i+0.5)-let.get_width()/2, bh+char.get_height()*0.25))
 
 
+    if not screenshot_mode:
+        for enum, line in enumerate(z):
+            ptext = font.render(line,True,(240,240,240),(0,0,0))
+            screen.blit(ptext,(20,20+30*enum))
 
-    for enum, line in enumerate(z):
-        ptext = font.render(line,True,(240,240,240),(0,0,0))
-        screen.blit(ptext,(20,20+30*enum))
-
-    #if curc != -1 and consists[curc].route == None: altstate = "DISABLED"
-    altstate = 'pressed' if kbd[pg.K_LALT] else 'released'
-    ptext = font.render(f"alt {altstate}",True,(240,240,240),(84,109,255) if altstate == 'pressed' else(0,0,0))
-    screen.blit(ptext,(20,20+30*len(z)))
+        #if curc != -1 and consists[curc].route == None: altstate = "DISABLED"
+        altstate = 'pressed' if kbd[pg.K_LALT] else 'released'
+        ptext = font.render(f"alt {altstate}",True,(240,240,240),(84,109,255) if altstate == 'pressed' else(0,0,0))
+        screen.blit(ptext,(20,20+30*len(z)))
 
 
     #ptext = font.render(f"а приборки-то нема",True,(240,240,240),(255,50,50))

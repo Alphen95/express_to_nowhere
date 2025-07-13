@@ -20,7 +20,7 @@ select = 0
 
 with open("world.json") as f:
     q = json.loads(f.read())
-    rail_nodes, blockmap, underlay_map, stations = q
+    rail_nodes, blockmap, aux_blockmap, underlay_map, stations = q
 
 tracks = {
 
@@ -67,7 +67,7 @@ for node in rail_nodes:
                 tracks[rail_id].e_links = rail_nodes[node][axis][1]
 
 for rail_id in tracks:
-    tracks[rail_id].ud = tile_size//2+2
+    tracks[rail_id].ud = tile_size//2+1
     tracks[rail_id].build()
 
 
@@ -112,20 +112,24 @@ pos = [0,0,0]
 m_block = [14,88,1488]
 old_m_pos = (0,0)
 
-underlay_blocks = ["base", "corner_a", "corner_b", "corner_c", "corner_d", "base", "base"]
+underlay_blocks = ["base", "corner_a", "corner_b", "corner_c", "corner_d", "wall_a", "wall_b", "wall_c", "wall_d"]
+underlay_blocks_alt = ["base", "corner_a", "corner_b", "corner_c", "corner_d", "fence_a", "fence_b", "fence_c", "fence_d"]
+special_objects = ["temp_a", "temp_b", "temp_c", "temp_d", "temp_e", "temp_f"]
 objects = [
-    'platform',
-    'platform_e_x_l',
-    'platform_e_x_r',
-    'platform_e_y_l',
-    'platform_e_y_r',
-    ['platform_e_x_l', 'platform_e_x_r'],
-    ['platform_e_y_l', 'platform_e_y_r'],
+    'plt',
+    'plt_exl',
+    'plt_exr',
+    'plt_eyl',
+    'plt_eyr',
+    ['plt_exl', 'plt_exr'],
+    ['plt_eyl', 'plt_eyr'],
+    'plt',
+    'plt',
 ]
 
 mode = "underlay"
-modes = ["rail", "object", "underlay", "station"]
-mode_str = {'rail':'Rails', 'object': 'Tiles', 'underlay':'Underlay', "station":"Stations "}
+modes = ["rail", "object", "spobject", "underlay", "station"]
+mode_str = {'rail':'Rails', 'object': 'Tiles', 'spobject': 'Temporary tiles' , 'underlay':'Underlay', "station":"Stations "}
 
 while working:
     if cur_stat+1 > len(stations):
@@ -255,42 +259,93 @@ while working:
             #    a = font_alt.render(bcrd, True, (0,0,0))
             #    screen.blit(a, block_corner)
 
+            if bcrd in underlay_map:
+                if False: pass
+                elif underlay_map[bcrd] == "wall_a":
+                    pg.draw.rect(screen, (120,120,120), [block_corner[0]+tile_size*7/8, block_corner[1],block_corner[2]/8, block_corner[3]])
+                elif underlay_map[bcrd] == "wall_b":
+                    pg.draw.rect(screen, (120,120,120), [block_corner[0], block_corner[1],block_corner[2], block_corner[3]/8])
+                elif underlay_map[bcrd] == "wall_c":
+                    pg.draw.rect(screen, (120,120,120), [block_corner[0], block_corner[1],block_corner[2]/8, block_corner[3]])
+                elif underlay_map[bcrd] == "wall_d":
+                    pg.draw.rect(screen, (120,120,120), [block_corner[0], block_corner[1]+tile_size*7/8,block_corner[2], block_corner[3]/8])
+                elif underlay_map[bcrd] == "fence_a":
+                    pg.draw.rect(screen, (240,240,240), [block_corner[0]+tile_size*7/8, block_corner[1],block_corner[2]/8, block_corner[3]])
+                elif underlay_map[bcrd] == "fence_b":
+                    pg.draw.rect(screen, (240,240,240), [block_corner[0], block_corner[1],block_corner[2], block_corner[3]/8])
+                elif underlay_map[bcrd] == "fence_c":
+                    pg.draw.rect(screen, [240]*3, [block_corner[0], block_corner[1],block_corner[2]/8, block_corner[3]])
+                elif underlay_map[bcrd] == "fence_d":
+                    pg.draw.rect(screen, [240]*3, [block_corner[0], block_corner[1]+tile_size*7/8,block_corner[2], block_corner[3]/8])
+
             if bcrd in blockmap:
-                if "platform" in blockmap[bcrd]:
-                    pg.draw.rect(screen, (160,160,160), block_corner)
-                if "platform_e_x_r" in blockmap[bcrd]:
-                    pg.draw.rect(screen, (160,160,160), [block_corner[0]+tile_size*3/4, block_corner[1],block_corner[2]/4, block_corner[3]])
-                if "platform_e_x_l" in blockmap[bcrd]:
-                    pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2]/4, block_corner[3]])
-                if "platform_e_y_r" in blockmap[bcrd]:
-                    pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1]+tile_size*3/4,block_corner[2], block_corner[3]/4])
-                if "platform_e_y_l" in blockmap[bcrd]:
-                    pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2], block_corner[3]/4])
-                
-                if "platform_s_a" in blockmap[bcrd]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0]+tile_size, block_corner[1]),
-                        (block_corner[0]+tile_size/2, block_corner[1]),
-                        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
-                    ))
-                if "platform_s_b" in blockmap[bcrd]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0], block_corner[1]+tile_size),
-                        (block_corner[0], block_corner[1]+tile_size/2),
-                        (block_corner[0]+tile_size/2, block_corner[1]+tile_size)
-                    ))
-                if "platform_s_c" in blockmap[bcrd]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0], block_corner[1]),
-                        (block_corner[0]+tile_size/2, block_corner[1]),
-                        (block_corner[0], block_corner[1]+tile_size/2)
-                    ))
-                if "platform_s_d" in blockmap[bcrd]:
-                    pg.draw.polygon(screen, (200,200,200),(
-                        (block_corner[0]+tile_size, block_corner[1]+tile_size),
-                        (block_corner[0]+tile_size/2, block_corner[1]+tile_size),
-                        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
-                    ))
+                tpc = [[block_corner[0]+tile_size*0.3,block_corner[1]+tile_size*0.4], [block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.3],[block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.4],[block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.5]]
+                for tile in blockmap[bcrd]:
+                    if False: pass
+                    elif tile == "plt":
+                        pg.draw.rect(screen, (160,160,160), block_corner)
+                    elif tile == "plt_exr":
+                        pg.draw.rect(screen, (160,160,160), [block_corner[0]+tile_size*3/4, block_corner[1],block_corner[2]/4, block_corner[3]])
+                    elif tile == "plt_exl":
+                        pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2]/4, block_corner[3]])
+                    elif tile == "plt_eyl":
+                        pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1]+tile_size*3/4,block_corner[2], block_corner[3]/4])
+                    elif tile == "plt_eyr":
+                        pg.draw.rect(screen, (160,160,160), [block_corner[0], block_corner[1],block_corner[2], block_corner[3]/4])
+                    elif tile == "temp_a":
+                        pg.draw.polygon(screen,(255,0,0),tpc)
+                    elif tile == "temp_b":
+                        pg.draw.polygon(screen,(0,255,0),tpc)
+                    elif tile == "temp_c":
+                        pg.draw.polygon(screen,(0,0,255),tpc)
+                    elif tile == "temp_d":
+                        pg.draw.polygon(screen,(255,255,0),tpc)
+                    else:
+                        pg.draw.rect(screen, (0,0,0), [block_corner[0]+tile_size*1/2, block_corner[1]+tile_size*1/2,block_corner[2]/2, block_corner[3]/2])
+                        pg.draw.rect(screen, (255,128,0), [block_corner[0]+tile_size*1/2, block_corner[1]+tile_size*1/2,block_corner[2]/4, block_corner[3]/4])
+                        pg.draw.rect(screen, (255,128,0), [block_corner[0]+tile_size*3/4, block_corner[1]+tile_size*3/4,block_corner[2]/4, block_corner[3]/4])
+            
+            if bcrd in aux_blockmap:
+                tpc = [[block_corner[0]+tile_size*0.3,block_corner[1]+tile_size*0.4], [block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.3],[block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.4],[block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.5]]
+                for tile in aux_blockmap[bcrd]:
+                    if False: pass
+                    elif tile == "temp_a":
+                        pg.draw.polygon(screen,(255,0,0),tpc)
+                    elif tile == "temp_b":
+                        pg.draw.polygon(screen,(0,255,0),tpc)
+                    elif tile == "temp_c":
+                        pg.draw.polygon(screen,(0,0,255),tpc)
+                    elif tile == "temp_d":
+                        pg.draw.polygon(screen,(255,255,0),tpc)
+                    else:
+                        pg.draw.rect(screen, (0,0,0), [block_corner[0], block_corner[1],block_corner[2]/2, block_corner[3]/2])
+                        pg.draw.rect(screen, (255,0,255), [block_corner[0], block_corner[1],block_corner[2]/4, block_corner[3]/4])
+                        pg.draw.rect(screen, (255,0,255), [block_corner[0]+tile_size*1/4, block_corner[1]+tile_size*1/4,block_corner[2]/4, block_corner[3]/4])
+
+                #if "platform_s_a" in blockmap[bcrd]:
+                #    pg.draw.polygon(screen, (200,200,200),(
+                #        (block_corner[0]+tile_size, block_corner[1]),
+                #        (block_corner[0]+tile_size/2, block_corner[1]),
+                #        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
+                #    ))
+                #if "platform_s_b" in blockmap[bcrd]:
+                #    pg.draw.polygon(screen, (200,200,200),(
+                #        (block_corner[0], block_corner[1]+tile_size),
+                #        (block_corner[0], block_corner[1]+tile_size/2),
+                #        (block_corner[0]+tile_size/2, block_corner[1]+tile_size)
+                #    ))
+                #if "platform_s_c" in blockmap[bcrd]:
+                #    pg.draw.polygon(screen, (200,200,200),(
+                #        (block_corner[0], block_corner[1]),
+                #        (block_corner[0]+tile_size/2, block_corner[1]),
+                #        (block_corner[0], block_corner[1]+tile_size/2)
+                #    ))
+                #if "platform_s_d" in blockmap[bcrd]:
+                #    pg.draw.polygon(screen, (200,200,200),(
+                #        (block_corner[0]+tile_size, block_corner[1]+tile_size),
+                #        (block_corner[0]+tile_size/2, block_corner[1]+tile_size),
+                #        (block_corner[0]+tile_size, block_corner[1]+tile_size/2)
+                #    ))
 
             if bcrd in rail_nodes:
                 pg.draw.polygon(screen,(colors[0]),[
@@ -327,12 +382,20 @@ while working:
             if evt.key == pg.K_5: select = 4
             if evt.key == pg.K_6: select = 5
             if evt.key == pg.K_7: select = 6
+            if evt.key == pg.K_8: select = 7
+            if evt.key == pg.K_9: select = 8
 
             if evt.key == pg.K_q: pos[2] -= tile_size
             if evt.key == pg.K_e: pos[2] += tile_size
 
-            if evt.key == pg.K_TAB:
-                mode = modes[(modes.index(mode)+1)%len(modes)]
+            #if evt.key == pg.K_TAB:
+            #    mode = modes[(modes.index(mode)+1)%len(modes)]
+
+            if evt.key == pg.K_F1: mode = modes[0]
+            if evt.key == pg.K_F2: mode = modes[1]
+            if evt.key == pg.K_F3: mode = modes[2]
+            if evt.key == pg.K_F4: mode = modes[3]
+            if evt.key == pg.K_F5: mode = modes[4]
 
                 #print(mode)
         elif evt.type == pg.MOUSEBUTTONDOWN:
@@ -431,7 +494,7 @@ while working:
                         tracks[maxtrack].e_pos = ((second[0][0]+0.5)*tile_size, (second[0][1]+0.5)*tile_size, second[0][2]*tile_size)
                         tracks[maxtrack].s_axis = first[1][0]
                         tracks[maxtrack].e_axis = second[1][0]
-                        tracks[maxtrack].ud = tile_size//2+2
+                        tracks[maxtrack].ud = tile_size//2+1
                         tracks[maxtrack].build()
                 first = [None, None]
                 second = [None, None]
@@ -444,7 +507,7 @@ while working:
 
     if not kbd[pg.K_SPACE] and mode == "underlay":
         if m_btn[0]:
-            underlay_map[crd] =  underlay_blocks[select]
+            underlay_map[crd] =  underlay_blocks[select] if not kbd[pg.K_LALT] else underlay_blocks_alt[select]
         elif m_btn[2] and crd in underlay_map:
             underlay_map.pop(crd)
 
@@ -453,6 +516,21 @@ while working:
             sel = objects[select]
             blockmap[crd] = [sel] if type(sel) == str else sel
         elif m_btn[2] and crd in blockmap:
+            blockmap.pop(crd)
+
+    if not kbd[pg.K_SPACE] and mode == "spobject":
+        if m_btn[0] and not kbd[pg.K_LALT]:
+            sel = special_objects[select]
+            aux_blockmap[crd] = [sel] if type(sel) == str else sel
+        elif m_btn[0] and kbd[pg.K_LALT]:
+            sel = special_objects[select]
+            if crd not in blockmap: blockmap[crd] = []
+
+            if sel not in blockmap[crd]:
+                blockmap[crd] += [sel] if type(sel) == str else sel
+        elif m_btn[2] and crd in aux_blockmap and not kbd[pg.K_LALT]:
+            aux_blockmap.pop(crd)
+        elif m_btn[2] and crd in blockmap and kbd[pg.K_LALT]:
             blockmap.pop(crd)
 
     if kbd[pg.K_SPACE] and m_btn[0]:
@@ -469,8 +547,9 @@ while working:
         f"current station: {stations[min(cur_stat, len(stations)-1)][2]}",
     ]
 
-    if mode == "underlay": z[3] = f"selection: {underlay_blocks[select]}"
+    if mode == "underlay": z[3] = f"selection: {underlay_blocks[select] if not kbd[pg.K_LALT] else underlay_blocks_alt[select]}"
     if mode == "object": z[3] = f"selection: {objects[select]}"
+    if mode == "spobject": z[3] = f"selection: {special_objects[select]}"
 
     for enum, line in enumerate(z):
         ptext = font.render(line,True,(240,240,240),(0,0,0))
@@ -482,4 +561,4 @@ while working:
 pg.quit()
 
 with open("world.json", mode="w", encoding="utf-8") as f:
-    f.write(json.dumps([rail_nodes, blockmap, underlay_map, stations], indent=4))
+    f.write(json.dumps([rail_nodes, blockmap, aux_blockmap, underlay_map, stations], indent=4))

@@ -8,6 +8,9 @@ import math
 def clamp(base, mn, mx):
     return min(max(mn, base), mx)
 
+def copy_surf(surf):
+    return pg.transform.rotate(surf,0)
+
 def draw_opaque_polygon(target, points, color, opacity):
     px, py = [], []
     for point in points:
@@ -32,6 +35,7 @@ class Camera():
         self.train_sprites = {}
 
         self.blockmap = {}
+        self.auxmap = {}
         self.undermap = {}
 
         self.rail_nodes = {}
@@ -89,32 +93,39 @@ class Camera():
         return (x, y)
 
     def render_tile(self, img, params, overdraw, add_angle = 0):
-        stacks, offset, scale = params
+        stacks, offset, scale, duplication = params
         temp_layers = []
 
         for i in range(stacks):
             temp_layers.append(
                 img.subsurface((128/scale*i,0,128/scale,128/scale))
             )
-            temp_layers[-1] = pg.transform.scale(temp_layers[-1],(128,128))
-            temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45-add_angle)
+            temp_layers[-1] = pg.transform.scale(temp_layers[-1],(128,128)) 
+            if type(add_angle) != int: temp_layers[-1] = pg.transform.flip(temp_layers[-1], add_angle[0], add_angle[1])
+
+            if type(add_angle) == int: temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45-add_angle)
+            elif type(add_angle) != int and len(add_angle) == 3: temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45-add_angle[3])
+            else: temp_layers[-1] = pg.transform.rotate(temp_layers[-1],45)
 
             w, h = temp_layers[-1].get_size()
 
             temp_layers[-1] = pg.transform.scale(temp_layers[-1],(w,h/2))
-
-        tile_surface = pg.Surface((temp_layers[0].get_width(),temp_layers[0].get_height()+((stacks+offset)*4)), pg.SRCALPHA)
-    
-        for i in range(stacks*4*int(4/scale)):
-            layer = temp_layers[int(i/4/int(4/scale))]
-
-            tile_surface.blit(layer, (0,(stacks+offset)*4*int(4/scale)-i))
+        
+        temp_layers *= duplication
+        tile_surface = pg.Surface((temp_layers[0].get_width(),temp_layers[0].get_height()+((len(temp_layers)+offset)*scale)), pg.SRCALPHA)
+        i = 0
+        base_ht = (len(temp_layers)+offset)*scale
+        i+= offset*scale
+        for layer in temp_layers:
+            for l in range(scale):
+                tile_surface.blit(layer, (0,base_ht-i))
+                i+=1
 
         w, h = tile_surface.get_size()
         tile_surface = pg.transform.scale(tile_surface,(w*2,h*2)).convert()
         tile_surface.set_colorkey((0,0,0))
 
-        return [tile_surface, (stacks+offset)*4*2*int(4/scale), overdraw]
+        return [tile_surface, base_ht*2, overdraw]
 
     def render_train(self, img, params):
         size, stacks, scale = params
@@ -179,8 +190,11 @@ class Camera():
         tracks = []
 
         draw_queue = []
+        aux_draw_queue = []
         player_coord = self.translate_to((0,0))
         dz = round(self.pos[2]/tile_size)
+        height_diff = abs(self.pos[2]-dz*tile_size)
+        opacity = int(clamp(255*(1-height_diff*2/tile_size), 0, 255)) if height_diff != 0 else 255
 
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
 
@@ -189,9 +203,9 @@ class Camera():
 
 
                 crdb = self.translate_to((dx*tile_size, dy*tile_size))
+                tile_center = [crdb[0], crdb[1]+90]
 
                 if bcrd in self.blockmap:
-                    tile_center = [crdb[0], crdb[1]+90]
                     for tile in self.blockmap[bcrd]:
                         if tile in self.sprites:
                             tile_sprite = self.sprites[tile][0]
@@ -205,20 +219,59 @@ class Camera():
                                 )
 
                             ])
+                
+                if bcrd in self.auxmap:
+                    for tile in self.auxmap[bcrd]:
+                        if tile in self.sprites:
+                            tile_sprite = self.sprites[tile][0]
+
+                            aux_draw_queue.append([
+                                (dx*tile_size+self.sprites[tile][2][0],dy*tile_size+self.sprites[tile][2][1]),
+                                tile_sprite,
+                                (
+                                    round(tile_center[0]-m_tile_w//2),
+                                    round(tile_center[1]-m_tile_h//2-self.sprites[tile][1])
+                                )
+
+                            ])
 
                 
                 if bcrd in self.undermap:
                     drc = (crdb[0]-180, crdb[1]-4)
                     if self.undermap[bcrd] == "base":
-                        screen.blit(self.sprites["under_base"][0], drc)
+                        sp = copy_surf(self.sprites["u_base"][0])
+                        if height_diff != 0: sp.set_alpha(255)
+                        screen.blit(sp, drc)
                     elif self.undermap[bcrd] == "corner_a":
-                        screen.blit(self.sprites["under_crna"][0], drc)
+                        sp = copy_surf(self.sprites["u_corner_a"][0])
+                        if height_diff != 0: sp.set_alpha(255)
+                        screen.blit(sp, drc)
                     elif self.undermap[bcrd] == "corner_b":
-                        screen.blit(self.sprites["under_crnb"][0], drc)
+                        sp = copy_surf(self.sprites["u_corner_b"][0])
+                        if height_diff != 0: sp.set_alpha(255)
+                        screen.blit(sp, drc)
                     elif self.undermap[bcrd] == "corner_c":
-                        screen.blit(self.sprites["under_crnc"][0], drc)
+                        sp = copy_surf(self.sprites["u_corner_c"][0])
+                        if height_diff != 0: sp.set_alpha(255)
+                        screen.blit(sp, drc)
                     elif self.undermap[bcrd] == "corner_d":
-                        screen.blit(self.sprites["under_crnd"][0], drc)
+                        sp = copy_surf(self.sprites["u_corner_d"][0])
+                        if height_diff != 0: sp.set_alpha(255)
+                        screen.blit(sp, drc)
+                    elif "wall" in self.undermap[bcrd] or "fence" in self.undermap[bcrd]:
+                        sprite = f"u_{self.undermap[bcrd]}"
+                        sp = copy_surf(self.sprites[sprite][0])
+                        if height_diff != 0: sp.set_alpha(opacity)
+                        draw_queue.append([
+                                (dx*tile_size+self.sprites[sprite][2][0],dy*tile_size+self.sprites[sprite][2][1]),
+                                sp,
+                                (
+                                    round(tile_center[0]-m_tile_w//2),
+                                    round(tile_center[1]-m_tile_h//2-self.sprites[sprite][1])
+                                )
+
+
+                            ])
 
                 if bcrd in self.rail_nodes:
                     for track in self.rail_nodes[bcrd]["x"][0]+self.rail_nodes[bcrd]["x"][1]+self.rail_nodes[bcrd]["y"][0]+self.rail_nodes[bcrd]["y"][1]:
@@ -273,11 +326,11 @@ class Camera():
                         )
 
         z = []
+
         for dy in range(bm_pos[1]-a,bm_pos[1]+a):
             p1 = self.translate_to(((bm_pos[0]-a)*tile_size,dy*tile_size))
             p2 = self.translate_to(((bm_pos[0]+a)*tile_size,dy*tile_size))
             pg.draw.line(screen, grid_color,p1,p2,4)
-
         for dx in range(bm_pos[0]-a,bm_pos[0]+a):
             p1 = self.translate_to((dx*tile_size,(bm_pos[1]-a)*tile_size))
             p2 = self.translate_to((dx*tile_size,(bm_pos[1]+a)*tile_size))
@@ -324,7 +377,7 @@ class Camera():
         draw_queue = []
         
                 
-        for element in sorted(draw_queue,key=lambda x:x[0]):
+        for element in sorted(aux_draw_queue,key=lambda x:x[0]):
             screen.blit(element[1],element[2])
         
         # без масштабирование потому что FPS 60 -> ~0
