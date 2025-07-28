@@ -113,7 +113,7 @@ m_block = [14,88,1488]
 old_m_pos = (0,0)
 
 underlay_blocks = ["base", "corner_a", "corner_b", "corner_c", "corner_d", "wall_a", "wall_b", "wall_c", "wall_d"]
-underlay_blocks_alt = ["base", "corner_a", "corner_b", "corner_c", "corner_d", "fence_a", "fence_b", "fence_c", "fence_d"]
+underlay_blocks_alt = ["bridge_base", "bridge_corner_a", "bridge_corner_b", "bridge_corner_c", "bridge_corner_d", "fence_a", "fence_b", "fence_c", "fence_d"]
 special_objects = ["temp_a", "temp_b", "temp_c", "temp_d", "temp_e", "temp_f"]
 objects = [
     'plt',
@@ -219,6 +219,32 @@ while working:
                     ))
                 elif underlay_map[bcrd] == "corner_d":
                     pg.draw.polygon(screen, (96,96,96),(
+                        (block_corner[0], block_corner[1]),
+                        (block_corner[0], block_corner[1]+tile_size),
+                        (block_corner[0]+tile_size, block_corner[1])
+                    ))
+                elif underlay_map[bcrd] == "bridge_base":
+                    pg.draw.rect(screen, (128,128,128), block_corner)
+                elif underlay_map[bcrd] == "bridge_corner_a":
+                    pg.draw.polygon(screen, (128,128,128),(
+                        (block_corner[0], block_corner[1]),
+                        (block_corner[0]+tile_size, block_corner[1]),
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size)
+                    ))
+                elif underlay_map[bcrd] == "bridge_corner_b":
+                    pg.draw.polygon(screen, (128,128,128),(
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size),
+                        (block_corner[0], block_corner[1]+tile_size),
+                        (block_corner[0]+tile_size, block_corner[1])
+                    ))
+                elif underlay_map[bcrd] == "bridge_corner_c":
+                    pg.draw.polygon(screen, (128,128,128),(
+                        (block_corner[0], block_corner[1]+tile_size),
+                        (block_corner[0], block_corner[1]),
+                        (block_corner[0]+tile_size, block_corner[1]+tile_size)
+                    ))
+                elif underlay_map[bcrd] == "bridge_corner_d":
+                    pg.draw.polygon(screen, (128,128,128),(
                         (block_corner[0], block_corner[1]),
                         (block_corner[0], block_corner[1]+tile_size),
                         (block_corner[0]+tile_size, block_corner[1])

@@ -47,6 +47,8 @@ class Rail:
         self.rd = 28
         self.ud = 128
 
+        self.enable_underlay = True
+
         self.identifier = identifier
         self.discrete = 10
 

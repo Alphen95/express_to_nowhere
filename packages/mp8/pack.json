@@ -1,0 +1,35 @@
+{
+    "trains":[
+        {
+            "id":"mp8-m",
+            "spritesheet":"mp8m.png",
+            "sprite_maps":{
+                "closed": [0,  0,[24,107],21,2],
+                "inter_1":[0,107,[24,107],21,2],
+                "inter_2":[0,214,[24,107],21,2],
+                "inter_3":[0,321,[24,107],21,2],
+                "inter_4":[0,428,[24,107],21,2],
+                "open":   [0,535,[24,107],21,2]
+            },
+            "prerendered":true
+        },
+        {
+            "id":"mp8-p",
+            "spritesheet":"mp8p.png",
+            "sprite_maps":{
+                "closed": [0,  0,[24,107],21,2],
+                "inter_1":[0,107,[24,107],21,2],
+                "inter_2":[0,214,[24,107],21,2],
+                "inter_3":[0,321,[24,107],21,2],
+                "inter_4":[0,428,[24,107],21,2],
+                "open":   [0,535,[24,107],21,2]
+            },
+            "prerendered":true
+        }
+    ],
+    "consists":[
+        ["MP8 (2 cars)",[[["mp8-m",false,true,true],["mp8-m",true,true,true]],440,[6,60]]],
+        ["MP8 (3 cars)",[[["mp8-m",false,true,true],["mp8-p",true,true,true],["mp8-m",true,true,true]],440,[6,60]]]
+    ]
+
+}

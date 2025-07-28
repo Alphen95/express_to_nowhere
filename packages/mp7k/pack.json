@@ -1,0 +1,22 @@
+{
+    "trains":[
+        {
+            "id":"mp7k",
+            "spritesheet":"mp7k.png",
+            "sprite_maps":{
+                "closed": [0,  0,[26,79],21,2],
+                "inter_1":[0, 79,[26,79],21,2],
+                "inter_2":[0,158,[26,79],21,2],
+                "inter_3":[0,237,[26,79],21,2],
+                "inter_4":[0,316,[26,79],21,2],
+                "open":   [0,395,[26,79],21,2]
+            },
+            "prerendered":true
+        }
+    ],
+    "consists":[
+        ["MP7-K (2 cars)",[[["mp7k",false,true,true],["mp7k",true,true,true]],324,[6,90]]],
+        ["MP7-K (4 cars)",[[["mp7k",false,true,true],["mp7k",true,true,true],["mp7k",false,true,true],["mp7k",true,true,true]],324,[6,90]]]
+    ]
+
+}
