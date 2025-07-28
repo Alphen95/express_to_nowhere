@@ -14,7 +14,7 @@ options = {
     'build_exe': {
         'include_msvcr': True,
         'includes': includes,
-        "include_files":["res","internal_system.py","isometry.py","leitmotifplus.py","rails_iso.py","train.py","world.json","elements.json","route_switches.json"]
+        "include_files":["res","packages","internal_system.py","isometry.py","leitmotifplus.py","rails_iso.py","train.py","world.json","elements.json","route_switches.json"]
         #'excludes': excludes,
         #   'zip_include_packages': zip_include_packages,
         #'build_exe': 'build_windows',
