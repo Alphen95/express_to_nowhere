@@ -41,6 +41,10 @@ class Camera():
 
         self.rail_nodes = {}
         self.tracks = {}
+
+        self.sounds = {}
+        for i in range(30): self.sounds[f"engine_{i}"] = pg.mixer.Sound(f"res/sound/engine_{i}.wav")
+        for sound in self.sounds: self.sounds[sound].set_volume(0.05)
         
         self.chunks = {
             "active": False,
@@ -49,6 +53,7 @@ class Camera():
 
             }
         }
+        self.sound_play = {}
 
         self.z = pg.Surface(camera_size)
         self.z.fill((128,128,128))
@@ -99,7 +104,7 @@ class Camera():
 
         for i in range(stacks):
             temp_layers.append(
-                img.subsurface((128/scale*i,0,128/scale,128/scale))
+                img.subsurface((128/scale*i,0,128/scale,128/scale)).convert_alpha()
             )
              
             if self.mode_2x: temp_layers[-1] = pg.transform.scale(temp_layers[-1],(256,256))
@@ -130,8 +135,7 @@ class Camera():
         if not self.mode_2x: 
             base_ht *= 2
             tile_surface = pg.transform.scale(tile_surface,(w*2,h*2))
-        tile_surface = tile_surface.convert()
-        tile_surface.set_colorkey((0,0,0))
+        tile_surface = tile_surface.convert_alpha()
         w, h = tile_surface.get_size()
 
         return [tile_surface, h-180+offset*scale*2-6, overdraw]
@@ -364,11 +368,18 @@ class Camera():
         #    p2 = self.translate_to((dx*tile_size,(bm_pos[1]+a)*tile_size))
         #    pg.draw.line(screen, grid_color,p1,p2,4)
 
+        sp_updates = {}
+
         for train in trains: # проходка по всем поездам
 
             if (self.pos[0]-21*tile_size < train.pos[0] < self.pos[0]+21*tile_size and 
                 self.pos[1]-21*tile_size < train.pos[1] < self.pos[1]+21*tile_size and
                 train.type != None): # если видно
+
+                dl = ((self.pos[0]-train.pos[0])**2+(self.pos[1]-train.pos[1])**2+(self.pos[2]-train.pos[2])**2)**0.5
+                if train.c in sp_updates:
+                    if dl < sp_updates[train.c][1]: sp_updates[train.c][1] = dl
+                else: sp_updates[train.c] = [train.vel, dl]
 
                 
                 dh = abs(int(train.pos[2])-int(self.pos[2])) # разница высот
@@ -398,6 +409,29 @@ class Camera():
                         round(center_pos[1]-array_entry[0][angle][1])
                         )
                     ])
+
+
+        for c in sp_updates:
+            tr = sp_updates[c]
+            if c not in self.sound_play:
+                self.sound_play[c] = [pg.mixer.find_channel(), round(tr[0]/7)]
+                self.sound_play[c][0].play(self.sounds[f"engine_{max(0,min(29,self.sound_play[c][1]))}"],-1)
+                if tr[0] == 0: self.sound_play[c][0].set_volume(0)
+                else: self.sound_play[c][0].set_volume(1-tr[1]/256/8)
+            else:
+                if round(tr[0]/7) != self.sound_play[c][1]:
+                    self.sound_play[c][1] = round(tr[0]/7)
+                    self.sound_play[c][0].play(self.sounds[f"engine_{max(0,min(29,self.sound_play[c][1]))}"],-1)
+                if tr[0] == 0: self.sound_play[c][0].set_volume(0)
+                else:self.sound_play[c][0].set_volume(1-tr[1]/256/8)
+
+        for_removal = []
+        for c in self.sound_play:
+            if c not in sp_updates:
+                self.sound_play[c][0].stop()
+                for_removal.append(c)
+
+        for c in for_removal: self.sound_play.pop(c)
         
 
         for element in sorted(draw_queue,key=lambda x:x[0][1]+x[0][0]):
@@ -406,7 +440,8 @@ class Camera():
 
                 
         for element in sorted(aux_draw_queue,key=lambda x:x[0]):
-            screen.blit(element[1],element[2])
+            if element[2][0] > self.camera_size[0] or element[2][1] > self.camera_size[1]: pass
+            else: screen.blit(element[1],element[2])
 
         
         # без масштабирование потому что FPS 60 -> ~0

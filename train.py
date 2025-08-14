@@ -281,9 +281,6 @@ class InternalSystem:
             "rk_stop":pg.mixer.Sound("res/sound/rk_stop.wav"),
             "rk_spin":pg.mixer.Sound("res/sound/rk_spin.wav"),
         }
-        for i in range(30): self.sounds[f"engine_{i}"] = pg.mixer.Sound(f"res/sound/engine_{i}.wav")
-
-        for sound in self.sounds: self.sounds[sound].set_volume(0.05)
         self.sounds["rk_start"].set_volume(0.02)
         self.sounds["rk_stop"].set_volume(0.02)
         self.sounds["rk_spin"].set_volume(0.02)
@@ -523,10 +520,7 @@ class InternalSystem:
                 for engine in engines: engine.state = current
                 self.torque = self.engine_amt*eng_koefficient*current
                 self.current = current
-                if math.ceil(self.axial_speed/7) != self.eng_sound:
-                    self.eng_sound = math.ceil(self.axial_speed/7)
-                    if self.eng_sound > 0: self.eng_channel.play(self.sounds[f"engine_{min(self.eng_sound,30)-1}"],-1)
-                    else: self.eng_channel.stop()
+                
                     
                 tick = 1/20
                 self.pressure += (self.tk["mapout"][self.tk["pos"]][0]-self.pressure)*self.tk["mapout"][self.tk["pos"]][1]*tick
@@ -543,10 +537,7 @@ class InternalSystem:
 
             elif self.dumb:
                 #print("a")
-                if math.ceil(self.axial_speed/7) != self.eng_sound:
-                    self.eng_sound = math.ceil(self.axial_speed/7)
-                    if self.eng_sound > 0: self.eng_channel.play(self.sounds[f"engine_{min(self.eng_sound,30)-1}"],-1)
-                    else: self.eng_channel.stop()
+                pass
 
 
 
@@ -1359,6 +1350,7 @@ class Consist:
         if self.velocity == 0: self.velocity_vector = 0
 
         self.internal.axial_speed = self.velocity/self.wheel_radius*self.reductional_coef
+        self.axial_velocity = self.internal.axial_speed
         self.internal.linear_velocity = self.velocity*3.6
 
     def player_cycle(self, display, screen_size, draw_pos, kbd, kbd_pressed, mouse_state):

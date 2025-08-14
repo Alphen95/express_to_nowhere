@@ -1,4 +1,4 @@
-#EXP TO:[Nowhere] VIA:[Shugurovka]
+#EXP TO:[Nowhere]
 
 import pygame as pg
 import os
@@ -9,9 +9,10 @@ import isometry as isometry
 import rails_iso as rails_m
 import leitmotifplus as leitmotif
 import json
+import socket
 
 win_size = (0,0)#(800,600)
-version = "0.4 Red and Teal Lines"
+version = "0.4.9 Komsomol St Line PRERELEASE"
 
 
 pg.init()
@@ -34,6 +35,9 @@ route_map = {
     "k": ["(K)"],
     "m": ["(M)"],
     "j": ["<J>"],
+    "1": ["<1>"],
+    "2": ["(2)"],
+    "3": ["(3)"],
     "4": ["(4)"],
     "5": ["<5>"],
 }
@@ -41,8 +45,52 @@ route_map = {
 tile_sheet = pg.image.load("res/tiles.png")
 el_s_sheet = pg.image.load("res/el_s.png")
 el_sp_sheet = pg.image.load("res/el_sp.png")
+subwmap = pg.image.load("res/map.png")
+subwmap = pg.transform.smoothscale(subwmap, [i/2 for i in subwmap.get_size()])
 
 player = isometry.Camera(win_size)
+
+temp_trains = []
+connected = False
+connection_thread = None
+ip = "127.0.0.1"
+
+def socketThread(client_socket):
+    global consists, temp_trains, connected, player, curc, mode, own_uid
+
+    while connected:
+        #try:
+        tt = []
+        a = []
+        for c in consists:
+            for enum, tr in enumerate(consists[c].trains):
+                tt.append(plain_dummy_encode(tr, c, consists[c].axial_velocity))
+                if c == curc and follow:
+                    if consists[curc].reversor_vector == -1 and enum == 0: player.pos = tr.pos
+                    if consists[curc].reversor_vector == 1 and enum+1 == len(consists[c].trains): player.pos = tr.pos
+                a.append(Dummy(tr, c, consists[c].axial_velocity))
+
+        client_socket.send((json.dumps(tt) + "=").encode())
+        received = ""
+        while True:
+            received += client_socket.recv(16384).decode("utf-8")
+            if not received:
+                connected = False
+            if received[-1] == "=":
+                received = received[:-1]
+                break
+        received = json.loads(received)
+        #print(received)
+        for playerpack in received:
+            for tr in playerpack: 
+                if tr != [] and tr[0] != own_uid:a.append(DecoderDummy(tr))
+        temp_trains = a
+
+        #except Exception as exc:
+        #    print("[ERROR]", "An unexpected error occured while client was connecting")
+        #    print("[EXCEPTION]", exc)
+        #    mode = "title"
+        #    connected = False
 
 sprite_load_params = [ # name - (x|y) - (stacks|offset|repeats) - rotation/flip - alignment
     ["cyrok_cx", (0,0), (5,6,1), 0, ct],
@@ -96,8 +144,8 @@ sprite_load_params = [ # name - (x|y) - (stacks|offset|repeats) - rotation/flip 
     ["plt_und_c", (1,18), (6,0,1),180, ct],
     ["plt_und_d", (1,18), (6,0,1),270, ct],
     
-    ["soundwall_xl", (2,0), (29,0,1),  0, fg],
-    ["soundwall_xr", (2,0), ( 6,0,1),180, bg],
+    ["soundwall_xl", (2,0), (29,0,1),  0, bg],
+    ["soundwall_xr", (2,0), ( 6,0,1),180, fg],
     ["soundwall_yl", (2,0), (29,0,1),270, bg],
     ["soundwall_yr", (2,0), ( 6,0,1), 90, fg],
     
@@ -247,6 +295,112 @@ sprite_load_params = [ # name - (x|y) - (stacks|offset|repeats) - rotation/flip 
     ["kash_exit_xl", (52,0), (24,6,1), (1,0), fg],
     ["kash_pillar_xr", (53,0), (24,6,1), 0, bg],
     ["kash_pillar_xl", (53,0), (24,6,1), (1,0), fg],
+    
+    ["mhnb-kms_xr", (54,0), (30,0,1), 0, bg],
+    ["mhnb-kms_xl", (54,0), (6 ,0,1), (1,0), fg],
+    ["green_pillar_xr", (0,27), (1,6,24), 0, fg],
+    ["green_pillar_xl", (0,27), (1,6,24), (1,0), bg],
+    
+    ["14st_xr", (55,0), (24,6,1), 0, bg],
+    ["14st_xl", (55,0), (24,6,1), (1,0), fg],
+    
+    ["eist_xr", (56,0), (30,0,1), 0, bg],
+    ["eist_xl", (56,0), (6 ,0,1), (1,0), fg],
+    ["eist_pillar_xr", (57,0), (24,6,1), 0, fg],
+    ["eist_pillar_xl", (57,0), (24,6,1), (1,0), bg],
+    
+    ["hlkm-kms_xr", (58,0), (30,0,1), 0, bg],
+    ["hlkm-kms_xl", (58,0), (6 ,0,1), (1,0), fg],
+    ["hlkm-kms_down_a", (59,0), (12,0,1), 0, ct],
+    ["hlkm-kms_down_b", (59,0), (12,0,1), (0,1), ct],
+    ["turq_pillar_xr", (0,28), (1,6,24), 0, fg],
+    ["turq_pillar_xl", (0,28), (1,6,24), (1,0), bg],
+    ["turq_pillar_yr", (0,28), (1,6,24), 270, fg],
+    ["turq_pillar_yl", (0,28), (1,6,24), (1,0,270), bg],
+    
+    ["50km_xr", (60,0), (24,6,1), 0, bg],
+    ["50km_xl", (60,0), (24,6,1), (1,0), fg],
+    ["50km_pillar_xr", (61,0), (24,6,1), 0, fg],
+    ["50km_pillar_xl", (61,0), (24,6,1), (1,0), bg],
+    
+    ["glum_xr", (62,0), (30,0,1), 0, bg],
+    ["glum_xl", (62,0), (6 ,0,1), (1,0), fg],
+    ["glum_radio_c", (63,0), (24,6,1), 0, ct],
+    ["glum_radio_e2", (64,0), (24,6,1), 0, ct],
+    ["glum_radio_e1", (64,0), (24,6,1), (0,1), ct],
+    
+    ["yrzn_c_xr", (65,0), (30,0,1), 0, bg],
+    ["yrzn_b_xr", (66,0), (30,0,1), 0, bg],
+    ["yrzn_a_xr", (65,0), (30,0,1), (0,1), bg],
+    ["yrzn_c_xl", (65,0), (6 ,0,1), (1,0), fg],
+    ["yrzn_b_xl", (66,0), (6 ,0,1), (1,0), fg],
+    ["yrzn_a_xl", (65,0), (6 ,0,1), (1,1), fg],
+    ["yrzn_pillar_xr", (67,0), (24,6,1), 0, fg],
+    ["yrzn_pillar_xl", (67,0), (24,6,1), (1,0), bg],
+    
+    ["hbst_xr", (68,0), (24,6,1), 0, bg],
+    ["hbst_xl", (68,0), (24,6,1), (1,0), fg],
+    
+    ["bshm_xr", (69,0), (30,0,1), 0, bg],
+    ["bshm_xl", (69,0), (6 ,0,1), (1,0), fg],
+    ["bshm_pylon", (70,0), (24,6,1), 0, fg],
+    
+    ["avst_yr", (71,0), (30,0,1), 270, bg],
+    ["avst_yl", (71,0), (6,0,1), (1,0,270), fg],
+    ["avst_pillar_yr", (72,0), (24,6,1), 270, fg],
+    ["avst_pillar_yl", (72,0), (24,6,1), (1,0,270), bg],
+    
+    ["alma_yr", (73,0), (24,6,1), 270, bg],
+    ["alma_yl", (73,0), (24,6,1), (1,0,270), fg],
+    
+    ["dstk_upper_name_xr", (74,0), (30,0,1), 0, bg],
+    ["dstk_upper_xr", (75,0), (30,0,1), 0, bg],
+    ["dstk_upper_name_xl", (74,0), (6,0,1), (1,0), bg],
+    ["dstk_upper_xl", (75,0), (6,0,1), (1,0), bg],
+    ["dstk_lower_name_xr", (76,0), (30,0,1), 0, bg],
+    ["dstk_lower_xr", (77,0), (30,0,1), 0, bg],
+    ["dstk_lower_name_xl", (76,0), (6,0,1), (1,0), bg],
+    ["dstk_lower_xl", (77,0), (6,0,1), (1,0), bg],
+    ["dstk_underpass_ar", (78,0), (11,0,1), (1,0), ct],
+    ["dstk_underpass_al", (78,0), (11,0,1), (0,0), ct],
+    ["dstk_underpass_br", (78,0), (11,0,1), (1,1), ct],
+    ["dstk_underpass_bl", (78,0), (11,0,1), (0,1), ct],
+    ["dstk_platform", (78,11), (6,0,1), 0, ct],
+    ["dstk_plt_er", (78,17), (6,0,1), 0, fg],
+    ["dstk_plt_el", (78,17), (6,0,1), (1,0), bg],
+    ["dstk_sign_br", (79,0), (9,6,1), (1,0), ct],
+    ["dstk_sign_bl", (79,0), (9,6,1), (0,0), ct],
+    ["dstk_sign_ar", (79,0), (9,6,1), (1,1), ct],
+    ["dstk_sign_al", (79,0), (9,6,1), (0,1), ct],
+    ["dstk_plt_r", (80,0), (6,0,1), (1,0), ct],
+    ["dstk_plt_l", (80,0), (6,0,1), (0,0), ct],
+    ["dstk_pillar_ar", (80,6), (24,6,1), (1,0), ct],
+    ["dstk_pillar_al", (80,6), (24,6,1), (0,0), ct],
+    ["dstk_stairs_ar", (81,6), (24,6,1), (1,0), ct],
+    ["dstk_stairs_al", (81,6), (24,6,1), (0,0), ct],
+    ["dstk_stairs_br", (81,6), (24,6,1), (1,1), ct],
+    ["dstk_stairs_bl", (81,6), (24,6,1), (0,1), ct],
+    
+    ["agizel_bridge_r", (87,0), (30,0,1), 0, bg],
+    ["agizel_bridge_l", (87,0), (30,0,1), (1,0), fg],
+    ["agizel_bridge_ar", (88,0), (30,0,1), 0, bg],
+    ["agizel_bridge_al", (88,0), (30,0,1), (1,0), fg],
+    ["agizel_bridge_br", (88,0), (30,0,1), (0,1), bg],
+    ["agizel_bridge_bl", (88,0), (30,0,1), (1,1), fg],
+    
+    ["coop_yr", (82,0), (24,6,1), 0, bg],
+    ["coop_yl", (82,0), (24,6,1), (1,0), fg],
+    ["coop_pillar_yr", (83,0), (24,6,1), 0, fg],
+    ["coop_pillar_yl", (83,0), (24,6,1), (1,0), bg],
+    
+    ["oren_yr", (84,0), (24,6,1), 0, bg],
+    ["oren_yl", (84,0), (24,6,1), (1,0), fg],
+    ["oren_roof_yr", (85,0), (24,6,1), 0, fg],
+    ["oren_roof_yl", (85,0), (24,6,1), (1,0), bg],
+    
+    ["kshi_yr", (86,0), (30,6,1), 0, bg],
+    ["kshi_yl", (86,0), (30,6,1), (1,0), fg],
+
 ]
 
 train_spawn_info = []
@@ -343,14 +497,24 @@ player.pos = [0*256,0,0]
 player.scale = 1
 
 class Dummy:
-    def __init__(self, tr):
+    def __init__(self, tr, c, vel):
+        self.c = c
+        self.vel = vel
         self.pos = [round(i,2) for i in tr.pos]
         self.size = tr.size
-        self.bogeys = tr.bogeys
         self.angle = (tr.angle+tr.flipped*180-90)%360
         self.flipped = tr.flipped
         self.type = tr.type
         self.doors = tr.doors
+
+class DecoderDummy:
+    def __init__(self, plain):
+        self.c, self.vel, self.pos, self.size, self.angle, self.flipped, self.type, self.doors = plain
+
+def plain_dummy_encode(tr, c, vel):
+    return [c, vel, [round(i,2) for i in tr.pos], tr.size, (tr.angle+tr.flipped*180-90)%360, tr.flipped, tr.type, tr.doors]
+
+
 
 a = pg.Surface(win_size, pg.SRCALPHA)
 a.fill((64,64,64,32))
@@ -365,7 +529,8 @@ spawn = False
 spawnpoints = [
     ["[OCT] Energy College", 288], ["[OCT] City Culture Hall", 275], ["[OCT] Balanovo-Park", 553], ["[OCT] Milowsk Hwy", 160], # October Av & Dim
     ["[ZRG] Zorge St", 294], ["[ZRG] Hafuri St", 386], # Zorge & Hafuri
-    ["[AKS] Quarry St", 438], ["[AKS] Karuanhorai", 389], ["[AKS] Kashkadan Lake", 535] # Aksakov & Mendeleev
+    ["[AKS] Quarry St", 438], ["[AKS] Karuanhorai", 389], ["[AKS] Kashkadan Lake", 535], # Aksakov & Mendeleev
+    ["[KMS] Avrora St", 793], ["[KMS] Koishi St", 837], ["[KMS] Glumilino", 704], ["[KMS] Bashmebel'", 754],  # Komsomol, Orenburg & Avrora
 ]
 
 spawn_window = leitmotif.Window((screen.get_width()-300-4, screen.get_height()/2-75, 300, 242), font, 26, {
@@ -411,48 +576,31 @@ while lt.is_alive() and working:
     pg.display.update()
     clock.tick(60)
 
+mode = "title"
+sound_play = {}
+temp_trains = []
+
 while working:
     clicked = False
     released = False
     pressed = []
-    if curc == -1: follow = False
+    unicode = ""
+    if curc == -1 or mode not in ["playing", "playing_mp"]: follow = False
 
     for evt in pg.event.get():
         if evt.type == pg.QUIT:
             working = False
+
         elif evt.type == pg.KEYDOWN:
             pressed.append(evt.key)
-
-            if evt.key == pg.K_d: player.debug = not player.debug
-            elif evt.key == pg.K_q and not follow: player.pos[2] -= tile_size
-            elif evt.key == pg.K_e and not follow: player.pos[2] += tile_size
-            
-            if evt.key == pg.K_p: follow = not follow
-
-            if evt.key == pg.K_s: spawn = not spawn
-            if evt.key == pg.K_o: screenshot_mode = not screenshot_mode
-
-            if evt.key == pg.K_DELETE and curc != -1:
-                consists[curc].is_alive = False
-                consists.pop(curc)
-                curc = -1
-
-            if evt.key == pg.K_z and curc != -1: consists[curc].reversor_vector = [0,-1,1][consists[curc].reversor_vector]
-
-            if evt.key == pg.K_LEFTBRACKET and follow:
-                consists[curc].route = list(route_map.keys())[(list(route_map.keys()).index(consists[curc].route)+1)%len(route_map)]
-                if consists[curc].route in route_switches:consists[curc].routing_switches = route_switches[consists[curc].route]
-                else: consists[curc].routing_switches = {}
-                
-            if evt.key == pg.K_RIGHTBRACKET and follow:
-                consists[curc].route = list(route_map.keys())[(list(route_map.keys()).index(consists[curc].route)-1)%len(route_map)]
-                if consists[curc].route in route_switches:consists[curc].routing_switches = route_switches[consists[curc].route]
-                else: consists[curc].routing_switches = {}
+            if 32 <= evt.key%1000 <= 64 or evt.key in [1073,1078] or 91 <= evt.key%1000 <= 122:unicode+=evt.unicode
 
         elif evt.type == pg.MOUSEBUTTONDOWN:
             clicked = True
+
         elif evt.type == pg.MOUSEBUTTONUP:
             released = True
+
     m_pos = pg.mouse.get_pos()
     m_btn = pg.mouse.get_pressed()
 
@@ -460,124 +608,216 @@ while working:
 
     screen.fill((0,0,0))
 
-    temp_trains = []
-    occupied_tracks = []
-    for c in consists:
-        for enum, tr in enumerate(consists[c].trains):
-            temp_trains.append(Dummy(tr))
-            if c == curc and follow:
-                if consists[curc].reversor_vector == -1 and enum == 0: player.pos = temp_trains[-1].pos
-                if consists[curc].reversor_vector == 1 and enum+1 == len(consists[c].trains): player.pos = temp_trains[-1].pos
+    if mode == "title":
+        for tr in consists:
+            consists[tr].is_alive = False
+        screen.fill((40,40,40))
+        t = sfont.render("Express to Nowhere", True, (240,240,240))
+        screen.blit(t, (20,win_size[1]/2-75))
+        t = sfont.render(version, True, (240,240,240))
+        screen.blit(t, (20,win_size[1]/2-45))
+        t = sfont.render("> Singleplayer", True, (240,240,240))
+        screen.blit(t, (20,win_size[1]/2-15))
+        if m_btn[0] and 20 <= m_pos[0] <= 20+t.get_width() and win_size[1]/2-15 <= m_pos[1] <= win_size[1]/2-15+t.get_height():
+            mode = "playing"
+            curc = -1
+            consists = {}
+        t = sfont.render("> Multiplayer", True, (240,240,240))
+        screen.blit(t, (20,win_size[1]/2+15))
+        if m_btn[0] and 20 <= m_pos[0] <= 20+t.get_width() and win_size[1]/2+15 <= m_pos[1] <= win_size[1]/2+15+t.get_height():
+            mode = "ip_input"
+            ip = ""
+            curc = -1
+            consists = {}
+        t = sfont.render("> Exit", True, (240,240,240))
+        screen.blit(t, (20,win_size[1]/2+45))
+        if m_btn[0] and 20 <= m_pos[0] <= 20+t.get_width() and win_size[1]/2+45 <= m_pos[1] <= win_size[1]/2+45+t.get_height():
+            working = False
 
-            occupied_tracks.append(tr.occupied_tracks[0])
-            occupied_tracks.append(tr.occupied_tracks[1])
-    
-    player.draw_map(temp_trains,screen, q)
-    player_block = [int(i//tile_size) for i in player.pos]
-    player_block = (player_block[0], player_block[1], player_block[2])
+        screen.blit(subwmap, (win_size[0]-subwmap.get_width()-50, win_size[1]/2-subwmap.get_height()/2))
 
-    #player.rail_nodes = rail_nodes
-    #player.tracks = tracks
-    #train.tracks = tracks
-    #train.nodes = rail_nodes
+    elif mode == "ip_input":
 
-    kbd = pg.key.get_pressed()
-
-    if follow and curc != -1:
-        consists[curc].player_cycle(screen, screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released])
-        consists[curc].switch = kbd[pg.K_LALT] if consists[curc].route == None else 0
-
-    fps = round(clock.get_fps())
-    speed = 16 if not kbd[pg.K_LALT] else 1
-
-    if not follow:
-        if kbd[pg.K_DOWN]: 
-            player.pos[0] += speed
-            player.pos[1] += speed
-        elif kbd[pg.K_UP]: 
-            player.pos[0] -= speed
-            player.pos[1] -= speed
-            
-        if kbd[pg.K_RIGHT]: 
-            player.pos[0] += speed
-            player.pos[1] -= speed
-        if kbd[pg.K_LEFT]: 
-            player.pos[0] -= speed
-            player.pos[1] += speed
-
-
-    z = [
-        version,
-        f"pos: {player.pos}",
-        f"fps: {fps}",
-    ]
-
-    char = dfont.render("A",True, (0,0,0))
-
-    if spawn:
-        spawn_window.update(screen, mouse_state, pressed)
-        if spawn_window.get_state("button_spawn") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "" and curc == -1:
-            trackid = spawnpoints[spawn_window.objects["list_station"]["items"].index(spawn_window.get_state("list_station"))][1]
-            trainpar = train_spawn_info[spawn_window.objects["list_train"]["items"].index(spawn_window.get_state("list_train"))]
-            tmp = train.spawn_train(
-                trainpar[0],
-                trackid if type(trackid) == int else random.choice(trackid), 
-                (trainpar[1],64), font)
-            if tmp != None:
-                curc = random.randint(0, 9999)
-                consists[curc] = tmp
-                consists[curc].door_time = trainpar[2]
-                consists[curc].reversor_vector = 1
-                follow = True
-        if spawn_window.get_state("button_spawn_arcade") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "" and curc == -1:
-            trackid = spawnpoints[spawn_window.objects["list_station"]["items"].index(spawn_window.get_state("list_station"))][1]
-            trainpar = train_spawn_info[spawn_window.objects["list_train"]["items"].index(spawn_window.get_state("list_train"))]
-            tmp = train.spawn_train(
-                trainpar[0],
-                trackid if type(trackid) == int else random.choice(trackid), 
-                (trainpar[1],64), font)
-            if tmp != None:
-                curc = random.randint(0, 9999)
-                consists[curc] = tmp
-                consists[curc].door_time = trainpar[2]
-                consists[curc].reversor_vector = 1
-                consists[curc].internal.dumb = True
-                follow = True
-
-
-    if curc != -1:
-        bh = 20
-        maxchar = 34
-        dlt = int(char.get_width()*1)
-        w = dlt*(maxchar)+char.get_height()
-        h = char.get_height()*1.5
-        bx = screen.get_width()-w-20
-        pg.draw.rect(screen, (128,128,128), (bx-4, bh-4, w+8, h+8))
-        pg.draw.rect(screen, (96,96,96), (bx, bh, w, h))
-        name = route_map[consists[curc].route][0]+" "
-        if player_block in st_tilemap:
-            name += st_tilemap[player_block][0]
+        t = sfont.render("Enter server IP (your own is 127.0.0.1)", True, (240,240,240))
+        screen.blit(t, (20,win_size[1]/2-15))
+        t = sfont.render(f"> {ip} <", True, (240,240,240))
+        screen.blit(t, (20,win_size[1]/2+15))
         
-        for i in range(maxchar):
-            pg.draw.rect(screen, (91,127,0), (bx+char.get_height()/2+dlt*(i), bh+char.get_height()*0.25, char.get_width(), char.get_height()))
-            if i < len(name):
-                let = dfont.render(name[i].upper(), True, (182,255,0))
-                screen.blit(let, (bx+char.get_height()/2+dlt*(i+0.5)-let.get_width()/2, bh+char.get_height()*0.25))
+        ip+=unicode
+        if pg.K_BACKSPACE in pressed and pressed != "": pressed=pressed[:-1]
+        if pg.K_RETURN in pressed: mode = "connect"
+
+    elif mode == "connect":
+        clientSocket = socket.socket()                  
+        try:
+            port = 29760
+            clientSocket.connect((ip, int(port)))
+            clientSocket.settimeout(5)
+            clientSocket.send("Player".encode())
+            received = ""
+            all_right = True
+            while True:
+                # print("cycling")
+                received += clientSocket.recv(16384).decode("utf-8")
+                if not received:
+                    all_right = False
+                    break
+                # print(received[-1])
+                if received[-1] == "=":
+                    received = received[:-1]
+                    break
+            # print("debug")
+            # print(received)
+            if all_right:
+                own_uid = json.loads(received)[0]
+                connected = True
+                connection_thread = threading.Thread(target=socketThread, args=[clientSocket])
+                connection_thread.start()
+                mode = "playing_mp"
+
+        except Exception as exc:
+            print("[ERROR]", "An unexpected error occured while client was connecting")
+            print("[EXCEPTION]", exc)
+            print("fucked up")
+            mode = "title"
+        
+    elif mode == "playing" or mode == "playing_mp":
+        if pg.K_LEFTBRACKET in pressed and follow and curc != -1:
+            consists[curc].route = list(route_map.keys())[(list(route_map.keys()).index(consists[curc].route)-1)%len(route_map)]
+            if consists[curc].route in route_switches:consists[curc].routing_switches = route_switches[consists[curc].route]
+            else: consists[curc].routing_switches = {}
+        if pg.K_RIGHTBRACKET in pressed and follow and curc != -1:
+            consists[curc].route = list(route_map.keys())[(list(route_map.keys()).index(consists[curc].route)+1)%len(route_map)]
+            if consists[curc].route in route_switches:consists[curc].routing_switches = route_switches[consists[curc].route]
+            else: consists[curc].routing_switches = {}
+        if pg.K_z in pressed and follow and curc != -1: consists[curc].reversor_vector = [0,-1,1][consists[curc].reversor_vector]
+        if pg.K_d in pressed: player.debug = not player.debug
+        if pg.K_q in pressed and not follow: player.pos[2] -= tile_size
+        if pg.K_e in pressed and not follow: player.pos[2] += tile_size
+        if pg.K_p in pressed: follow = not follow
+        if pg.K_s in pressed: spawn = not spawn
+        if pg.K_o in pressed: screenshot_mode = not screenshot_mode
+        if pg.K_ESCAPE in pressed:
+            mode = "title"
+        if pg.K_DELETE in pressed and curc != -1:
+            consists[curc].is_alive = False
+            consists.pop(curc)
+            curc = -1
+
+        occupied_tracks = []
+        sp_info = {}
+
+        if mode == "playing":
+            temp_trains = []
+            for c in consists:
+                dl = 256*8
+                for enum, tr in enumerate(consists[c].trains):
+                    temp_trains.append(Dummy(tr, c, consists[c].axial_velocity))
+                    if c == curc and follow:
+                        if consists[curc].reversor_vector == -1 and enum == 0: player.pos = temp_trains[-1].pos
+                        if consists[curc].reversor_vector == 1 and enum+1 == len(consists[c].trains): player.pos = temp_trains[-1].pos
+
+                    occupied_tracks.append(tr.occupied_tracks[0])
+                    occupied_tracks.append(tr.occupied_tracks[1])            
+        
+        player.draw_map(temp_trains,screen, q)
+        player_block = [int(i//tile_size) for i in player.pos]
+        player_block = (player_block[0], player_block[1], player_block[2])
+
+        kbd = pg.key.get_pressed()
+
+        if follow and curc != -1:
+            consists[curc].player_cycle(screen, screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released])
+            consists[curc].switch = kbd[pg.K_LALT] if consists[curc].route == None else 0
+
+        fps = round(clock.get_fps())
+        speed = 16 if not kbd[pg.K_LALT] else 1
+
+        if not follow:
+            if kbd[pg.K_DOWN]: 
+                player.pos[0] += speed
+                player.pos[1] += speed
+            elif kbd[pg.K_UP]: 
+                player.pos[0] -= speed
+                player.pos[1] -= speed
+                
+            if kbd[pg.K_RIGHT]: 
+                player.pos[0] += speed
+                player.pos[1] -= speed
+            if kbd[pg.K_LEFT]: 
+                player.pos[0] -= speed
+                player.pos[1] += speed
 
 
-    if not screenshot_mode:
-        for enum, line in enumerate(z): 
-            ptext = font.render(line,True,(240,240,240),(0,0,0))
-            screen.blit(ptext,(20,20+30*enum))
+        z = [version, f"pos: {player.pos}", f"fps: {fps}",]
 
-        altstate = 'pressed' if kbd[pg.K_LALT] else 'released'
-        if curc != -1 and consists[curc].route != None: altstate = "DISABLED"
-        ptext = font.render(f"alt {altstate}",True,(240,240,240),(84,109,255) if altstate == 'pressed' else(0,0,0))
-        screen.blit(ptext,(20,20+30*len(z)))
+        char = dfont.render("A",True, (0,0,0))
+
+        if spawn:
+            spawn_window.update(screen, mouse_state, pressed)
+            if spawn_window.get_state("button_spawn") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "" and curc == -1:
+                trackid = spawnpoints[spawn_window.objects["list_station"]["items"].index(spawn_window.get_state("list_station"))][1]
+                trainpar = train_spawn_info[spawn_window.objects["list_train"]["items"].index(spawn_window.get_state("list_train"))]
+                tmp = train.spawn_train(
+                    trainpar[0],
+                    trackid if type(trackid) == int else random.choice(trackid), 
+                    (trainpar[1],64), font)
+                if tmp != None:
+                    curc = random.randint(0, 9999) if mode != "playing_mp" else own_uid
+                    consists[curc] = tmp
+                    consists[curc].door_time = trainpar[2]
+                    consists[curc].reversor_vector = 1
+                    follow = True
+            if spawn_window.get_state("button_spawn_arcade") and spawn_window.get_state("list_station") != "" and spawn_window.get_state("list_train") != "" and curc == -1:
+                trackid = spawnpoints[spawn_window.objects["list_station"]["items"].index(spawn_window.get_state("list_station"))][1]
+                trainpar = train_spawn_info[spawn_window.objects["list_train"]["items"].index(spawn_window.get_state("list_train"))]
+                tmp = train.spawn_train(
+                    trainpar[0],
+                    trackid if type(trackid) == int else random.choice(trackid), 
+                    (trainpar[1],64), font)
+                if tmp != None:
+                    curc = random.randint(0, 9999) if mode != "playing_mp" else own_uid
+                    consists[curc] = tmp
+                    consists[curc].door_time = trainpar[2]
+                    consists[curc].reversor_vector = 1
+                    consists[curc].internal.dumb = True
+                    follow = True
+
+
+        if curc != -1:
+            bh = 20
+            maxchar = 34
+            dlt = int(char.get_width()*1)
+            w = dlt*(maxchar)+char.get_height()
+            h = char.get_height()*1.5
+            bx = screen.get_width()-w-20
+            pg.draw.rect(screen, (128,128,128), (bx-4, bh-4, w+8, h+8))
+            pg.draw.rect(screen, (96,96,96), (bx, bh, w, h))
+            name = route_map[consists[curc].route][0]+" "
+            if player_block in st_tilemap:
+                name += st_tilemap[player_block][0]
+            
+            for i in range(maxchar):
+                pg.draw.rect(screen, (91,127,0), (bx+char.get_height()/2+dlt*(i), bh+char.get_height()*0.25, char.get_width(), char.get_height()))
+                if i < len(name):
+                    let = dfont.render(name[i].upper(), True, (182,255,0))
+                    screen.blit(let, (bx+char.get_height()/2+dlt*(i+0.5)-let.get_width()/2, bh+char.get_height()*0.25))
+
+
+        if not screenshot_mode:
+            for enum, line in enumerate(z): 
+                ptext = font.render(line,True,(240,240,240),(0,0,0))
+                screen.blit(ptext,(20,20+30*enum))
+
+            altstate = 'pressed' if kbd[pg.K_LALT] else 'released'
+            if curc != -1 and consists[curc].route != None: altstate = "DISABLED"
+            ptext = font.render(f"alt {altstate}",True,(240,240,240),(84,109,255) if altstate == 'pressed' else(0,0,0))
+            screen.blit(ptext,(20,20+30*len(z)))
 
     pg.display.update()
     clock.tick(60)
 
 pg.quit()
+connected = False
 for tr in consists:
     consists[tr].is_alive = False
