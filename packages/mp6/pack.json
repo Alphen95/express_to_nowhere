@@ -1,0 +1,21 @@
+{
+    "trains":[
+        {
+            "id":"mp6",
+            "spritesheet":"mp6.png",
+            "sprite_maps":{
+                "closed": [0,  0,[26,119],22,2],
+                "inter_1":[0,119,[26,119],22,2],
+                "inter_2":[0,238,[26,119],22,2],
+                "inter_3":[0,357,[26,119],22,2],
+                "inter_4":[0,476,[26,119],22,2],
+                "open":   [0,595,[26,119],22,2]
+            },
+           "prerendered":true
+        }
+    ], 
+    "consists":[
+        ["MP6 (2 cars)",[[["mp6",false,true,true],["mp6",true,true,true]],488,[6,60]]]
+    ]
+
+}

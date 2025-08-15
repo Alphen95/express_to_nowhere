@@ -12,7 +12,7 @@ import json
 import socket
 
 win_size = (0,0)#(800,600)
-version = "0.4.9 Komsomol St Line PRERELEASE"
+version = "0.5 Komsomol St Line"
 
 
 pg.init()
@@ -429,12 +429,6 @@ def load_thread():
 lt = threading.Thread(target=load_thread)
 lt.start()
 
-#player.train_sprites["Sv_p"] = player.render_train(el_s_sheet,((32,98),28 ,2))
-#player.train_sprites["Sv_m"] = player.render_train(el_sp_sheet,((32,98),32 ,2))
-#player.train_sprites["uvm8-m"] = player.render_train(uvm8m_sheet,((24,104),21 ,2))
-#player.train_sprites["uvm8-p"] = player.render_train(uvm8p_sheet,((24,104),21 ,2))
-
-
 with open("world.json") as f:
     q = json.loads(f.read())
     rail_nodes, blockmap, aux_blockmap, underay_map, stations = q
@@ -533,26 +527,26 @@ spawnpoints = [
     ["[KMS] Avrora St", 793], ["[KMS] Koishi St", 837], ["[KMS] Glumilino", 704], ["[KMS] Bashmebel'", 754],  # Komsomol, Orenburg & Avrora
 ]
 
-spawn_window = leitmotif.Window((screen.get_width()-300-4, screen.get_height()/2-75, 300, 242), font, 26, {
+spawn_window = leitmotif.Window((screen.get_width()-300-4, screen.get_height()/2-200, 300, 400), font, 26, {
     "label_title":{
         "active":True,"type":"label","align":"center","text":"Train spawner",
         "rect":[0,"indent","w","line_height"]
     },
     "list_station": {
         "active":True,"type":"item_list","items":[i[0] for i in spawnpoints],
-        "rect":[0,"indent+line_height*1.33","w","line_height*4"]
+        "rect":[0,"indent+line_height*1.33","w","line_height*6"]
     },
     "list_train": {
         "active":True,"type":"item_list","items":consist_names,
-        "rect":[0,"indent+line_height*5.66","w","line_height*2"]
+        "rect":[0,"indent+line_height*7.66","w","line_height*6"]
     },
     "button_spawn":{
         "active":True,"type":"button","text":"Spawn","align":"center",
-        "rect":["2","indent+line_height*8","w/2-4","line_height"]
+        "rect":["2","indent+line_height*14","w/2-4","line_height"]
     },
     "button_spawn_arcade":{
         "active":True,"type":"button","text":"Spawn Arcade","align":"center",
-        "rect":["w/2+2","indent+line_height*8","w/2-4","line_height"]
+        "rect":["w/2+2","indent+line_height*14","w/2-4","line_height"]
     },
 })
 spawn_window.recalculate()
@@ -611,6 +605,7 @@ while working:
     if mode == "title":
         for tr in consists:
             consists[tr].is_alive = False
+            
         screen.fill((40,40,40))
         t = sfont.render("Express to Nowhere", True, (240,240,240))
         screen.blit(t, (20,win_size[1]/2-75))
@@ -637,6 +632,7 @@ while working:
         screen.blit(subwmap, (win_size[0]-subwmap.get_width()-50, win_size[1]/2-subwmap.get_height()/2))
 
     elif mode == "ip_input":
+        screen.fill((40,40,40))
 
         t = sfont.render("Enter server IP (your own is 127.0.0.1)", True, (240,240,240))
         screen.blit(t, (20,win_size[1]/2-15))
@@ -644,7 +640,7 @@ while working:
         screen.blit(t, (20,win_size[1]/2+15))
         
         ip+=unicode
-        if pg.K_BACKSPACE in pressed and pressed != "": pressed=pressed[:-1]
+        if pg.K_BACKSPACE in pressed and ip != "": ip=ip[:-1]
         if pg.K_RETURN in pressed: mode = "connect"
 
     elif mode == "connect":
