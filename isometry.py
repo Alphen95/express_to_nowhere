@@ -249,11 +249,12 @@ class Camera():
                 if bcrd in self.blockmap:
                     for tile in self.blockmap[bcrd]:
                         if tile in self.sprites:
-                            tile_sprite = self.sprites[tile][0]
+                            sp = self.sprites[tile][0]
+                            sp.set_alpha(opacity)
 
                             draw_queue.append([
                                 (dx*tile_size+self.sprites[tile][2][0],dy*tile_size+self.sprites[tile][2][1]),
-                                tile_sprite,
+                                sp,
                                 (
                                     drc[0],
                                     drc[1]-self.sprites[tile][1]
@@ -264,11 +265,12 @@ class Camera():
                 if bcrd in self.auxmap:
                     for tile in self.auxmap[bcrd]:
                         if tile in self.sprites:
-                            tile_sprite = self.sprites[tile][0]
+                            sp = self.sprites[tile][0]
+                            sp.set_alpha(opacity)
 
                             aux_draw_queue.append([
                                 (dx*tile_size+self.sprites[tile][2][0],dy*tile_size+self.sprites[tile][2][1]),
-                                tile_sprite,
+                                sp,
                                 (
                                     drc[0],
                                     drc[1]-self.sprites[tile][1]

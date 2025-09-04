@@ -130,6 +130,7 @@ objects = [
 mode = "underlay"
 modes = ["rail", "object", "spobject", "underlay", "station"]
 mode_str = {'rail':'Rails', 'object': 'Tiles', 'spobject': 'Temporary tiles' , 'underlay':'Underlay', "station":"Stations "}
+hide = False
 
 while working:
     if cur_stat+1 > len(stations):
@@ -307,7 +308,7 @@ while working:
             if bcrd in blockmap:
                 tpc = [[block_corner[0]+tile_size*0.3,block_corner[1]+tile_size*0.4], [block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.3],[block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.4],[block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.5]]
                 for tile in blockmap[bcrd]:
-                    if False: pass
+                    if False or hide: pass
                     elif tile == "plt":
                         pg.draw.rect(screen, (160,160,160), block_corner)
                     elif tile == "plt_exr":
@@ -334,7 +335,7 @@ while working:
             if bcrd in aux_blockmap:
                 tpc = [[block_corner[0]+tile_size*0.3,block_corner[1]+tile_size*0.4], [block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.3],[block_corner[0]+tile_size*0.5,block_corner[1]+tile_size*0.4],[block_corner[0]+tile_size*0.4,block_corner[1]+tile_size*0.5]]
                 for tile in aux_blockmap[bcrd]:
-                    if False: pass
+                    if False or hide: pass
                     elif tile == "temp_a":
                         pg.draw.polygon(screen,(255,0,0),tpc)
                     elif tile == "temp_b":
@@ -437,6 +438,8 @@ while working:
     if kbd[pg.K_a]: pos[1] += speed
     if kbd[pg.K_d]: pos[1] -= speed
     
+    if kbd[pg.K_RSHIFT]: hide = True
+    else: hide = False
 
     m_pos = [pg.mouse.get_pos()[i]-screen.get_size()[i]/2 for i in range(2)]
     m_pos[0] = pos[1]-m_pos[0]

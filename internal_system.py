@@ -7,7 +7,6 @@ def sgn(x):
     if x > 0: return 1
     elif x < 0: return -1
     else: return 0
-
 class EditorTable:
     def __init__(self, heading, objects_a, objects_b, wire_amt, font):
         self.heading = heading
@@ -143,6 +142,7 @@ class InternalSystem:
         self.torque = 0 # вырабатываемый крутящий момент
         self.pressure = 0 # давление в ТЦ
         self.axial_speed = 0 # получаемая угловая скорость
+        self.linear_velocity = 0 # получаемая линейная скорость
 
         self.open = False # состояние редактора
         self.held = -1 # держимый объект
@@ -158,16 +158,16 @@ class InternalSystem:
 
         self.km = { # ВСЕ параметры КМ
             "pos":0,
-            "dumbdraw":[11,29,9,-1],
+            "dumbdraw":[11,35,15,-1],
             "dumbmapout":10000,
             "draw":[
+                [11,36],
+                [11,33],
                 [11,30],
                 [11,27],
                 [11,24],
                 [11,21],
                 [11,18],
-                [11,15],
-                [11,12],
             ],
             "delta": [2,10],
             "mapout":[
@@ -181,14 +181,14 @@ class InternalSystem:
 
         self.tk = { # ВСЕ параметры ТК
             "pos":0,
-            "dumbdraw":[82,9,29,1],
-            "dumbmapout":8,
+            "dumbdraw":[82,35,15,1],
+            "dumbmapout":9.9,
             "draw":[
-                [82,9],
-                [82,14],
-                [82,19],
-                [82,24],
+                [82,13],
+                [82,20],
+                [82,25],
                 [82,29],
+                [82,35],
             ],
             "delta": [15,10],
             "mapout":[
@@ -207,6 +207,13 @@ class InternalSystem:
             #],
         }
 
+        self.gauge_info = [
+            [(39,7),(43,7)],
+            [(50,7),(54,7)],
+            [(32,6),(59,6)]
+        ]
+        self.doors = [0,0]
+
         self.tile_net = {}
 
         self.sprites = {}
@@ -218,9 +225,6 @@ class InternalSystem:
             "rk_stop":pg.mixer.Sound("res/sound/rk_stop.wav"),
             "rk_spin":pg.mixer.Sound("res/sound/rk_spin.wav"),
         }
-        for i in range(30): self.sounds[f"engine_{i}"] = pg.mixer.Sound(f"res/sound/engine_{i}.wav")
-
-        for sound in self.sounds: self.sounds[sound].set_volume(0.05)
         self.sounds["rk_start"].set_volume(0.02)
         self.sounds["rk_stop"].set_volume(0.02)
         self.sounds["rk_spin"].set_volume(0.02)
@@ -460,10 +464,7 @@ class InternalSystem:
                 for engine in engines: engine.state = current
                 self.torque = self.engine_amt*eng_koefficient*current
                 self.current = current
-                if math.ceil(self.axial_speed/7) != self.eng_sound:
-                    self.eng_sound = math.ceil(self.axial_speed/7)
-                    if self.eng_sound > 0: self.eng_channel.play(self.sounds[f"engine_{min(self.eng_sound,30)-1}"],-1)
-                    else: self.eng_channel.stop()
+                
                     
                 tick = 1/20
                 self.pressure += (self.tk["mapout"][self.tk["pos"]][0]-self.pressure)*self.tk["mapout"][self.tk["pos"]][1]*tick
@@ -480,10 +481,7 @@ class InternalSystem:
 
             elif self.dumb:
                 #print("a")
-                if math.ceil(self.axial_speed/7) != self.eng_sound:
-                    self.eng_sound = math.ceil(self.axial_speed/7)
-                    if self.eng_sound > 0: self.eng_channel.play(self.sounds[f"engine_{min(self.eng_sound,30)-1}"],-1)
-                    else: self.eng_channel.stop()
+                pass
 
 
 
@@ -639,7 +637,6 @@ class InternalSystem:
                         base_pos[1]+(self.tk["draw"][self.tk["pos"]][1]-self.tk["delta"][1])*self.ui_scale
                     ))
 
-
             if self.open:
 
                 m_old = mouse[0]
@@ -685,7 +682,7 @@ class InternalSystem:
             else:
                 pass
 
-            if pg.K_e in kbd: self.open = 1 - self.open
+            #if pg.K_e in kbd: self.open = 1 - self.open
 
             if pg.K_UP in kbd and self.km["pos"] < len(self.km["mapout"])-1: self.km["pos"] += 1
             if pg.K_DOWN in kbd and self.km["pos"] > 0: self.km["pos"] -= 1
@@ -723,13 +720,44 @@ class InternalSystem:
                 self.km["pos"] += abs(self.km["dumbdraw"][3])*sgn(self.km["dumbdraw"][1]-self.km["pos"])
 
             if kbd_pressed[pg.K_DOWN]:
-                self.pressure = self.tk["dumbmapout"]
+                self.pressure = self.tk["dumbmapout"]*(self.tk["pos"]-self.tk["dumbdraw"][1])/(self.tk["dumbdraw"][2]-self.tk["dumbdraw"][1])
                 self.tk["pos"] += abs(self.tk["dumbdraw"][3])*sgn(self.tk["dumbdraw"][2]-self.tk["pos"])
             else:
                 self.pressure = 0
                 self.tk["pos"] += abs(self.tk["dumbdraw"][3])*sgn(self.tk["dumbdraw"][1]-self.tk["pos"])
+        
+        speed = str(round(self.linear_velocity))
+        while len(speed) < 2: speed = "0"+speed
+        draw_surf.blit(self.ui_sprites[f"digit_{speed[-2]}"], (
+            base_pos[0]+self.gauge_info[0][0][0]*self.ui_scale,
+            base_pos[1]+self.gauge_info[0][0][1]*self.ui_scale
+        ))
+        draw_surf.blit(self.ui_sprites[f"digit_{speed[-1]}"], (
+            base_pos[0]+self.gauge_info[0][1][0]*self.ui_scale,
+            base_pos[1]+self.gauge_info[0][1][1]*self.ui_scale
+        ))
+        
+        press = str(round(self.pressure*10))
+        while len(press) < 2: press = "0"+press
+        draw_surf.blit(self.ui_sprites[f"digit_{press[-2]}"], (
+            base_pos[0]+self.gauge_info[1][0][0]*self.ui_scale,
+            base_pos[1]+self.gauge_info[1][0][1]*self.ui_scale
+        ))
+        draw_surf.blit(self.ui_sprites[f"digit_{press[-1]}"], (
+            base_pos[0]+self.gauge_info[1][1][0]*self.ui_scale,
+            base_pos[1]+self.gauge_info[1][1][1]*self.ui_scale
+        ))
 
-        return draw_surf
+        if self.doors[1]:
+            draw_surf.blit(self.ui_sprites["vfd_lit"], (
+                base_pos[0]+self.gauge_info[2][0][0]*self.ui_scale,
+                base_pos[1]+self.gauge_info[2][0][1]*self.ui_scale
+            ))
+        if self.doors[0]:
+            draw_surf.blit(self.ui_sprites["vfd_lit"], (
+                base_pos[0]+self.gauge_info[2][1][0]*self.ui_scale,
+                base_pos[1]+self.gauge_info[2][1][1]*self.ui_scale
+            ))
 
     def get_selected(self, m_pos):
         deltas = [self.tile_size*i for i in ((self.display_size[0]-self.net_size[0])/2, (self.display_size[1]-self.net_size[1])/2+0.5)]

@@ -12,15 +12,15 @@ import json
 import socket
 
 win_size = (0,0)#(800,600)
-version = "0.5 Komsomol St Line"
+version = "v0.6 Halle & Unity"
 
 
 pg.init()
 clock = pg.time.Clock()
-screen = pg.display.set_mode(win_size, pg.SRCALPHA | pg.HWSURFACE) #| pg.FULLSCREEN)
-font = pg.font.Font("res/font.ttf",20)
-dfont = pg.font.Font("res/dots.otf",28)
-sfont = pg.font.Font("res/font.ttf",24)
+screen = pg.display.set_mode(win_size, pg.SRCALPHA | pg.HWSURFACE | pg.FULLSCREEN)
+font = pg.font.Font("./res/font.ttf",20)
+dfont = pg.font.Font("./res/dots.otf",28)
+sfont = pg.font.Font("./res/font.ttf",24)
 
 win_size = screen.get_size()
 win_size = (win_size[0],win_size[1])
@@ -32,19 +32,25 @@ ct, fg, bg = (tile_size/2, tile_size/2), (tile_size, tile_size), (0,0)
 
 route_map = {
     None:[" X "],
+
+    "b": ["(B)"],
+    "d": ["<D>"],
+    "t": ["(T)"],
+
     "k": ["(K)"],
     "m": ["(M)"],
     "j": ["<J>"],
+
     "1": ["<1>"],
     "2": ["(2)"],
     "3": ["(3)"],
+
     "4": ["(4)"],
+
     "5": ["<5>"],
 }
 
 tile_sheet = pg.image.load("res/tiles.png")
-el_s_sheet = pg.image.load("res/el_s.png")
-el_sp_sheet = pg.image.load("res/el_sp.png")
 subwmap = pg.image.load("res/map.png")
 subwmap = pg.transform.smoothscale(subwmap, [i/2 for i in subwmap.get_size()])
 
@@ -401,6 +407,73 @@ sprite_load_params = [ # name - (x|y) - (stacks|offset|repeats) - rotation/flip 
     ["kshi_yr", (86,0), (30,6,1), 0, bg],
     ["kshi_yl", (86,0), (30,6,1), (1,0), fg],
 
+    ["bash-hal_r", (89,0), (30,0,1), 270, bg],
+    ["bash-hal_l", (89,0), (6,0,1), (1,0, 270), fg],
+    ["yellow_pillar_xr", (0,29), (1,6,24), 0, fg],
+    ["yellow_pillar_xl", (0,29), (1,6,24), (1,0), bg],
+    ["yellow_pillar_yr", (0,29), (1,6,24), 270, fg],
+    ["yellow_pillar_yl", (0,29), (1,6,24), (1,0,270), bg],
+
+    ["hlkm-hal_r", (90,0), (24,6,1), 270, bg],
+    ["hlkm-hal_l", (90,0), (24,6,1), (1,0, 270), fg],
+    ["hlkm-hal_stairs_r", (91,0), (24,6,1), (0,1, 270), bg],
+    ["hlkm-hal_stairs_l", (91,0), (24,6,1), (1,0, 270), fg],
+    
+    ["hloc-hal_r", (92,0), (30,0,1), 270, bg],
+    ["hloc-hal_l", (92,0), (6,0,1), (1,0, 270), fg],
+    ["hloc-hal_pillar_r", (93,0), (24,6,1), (0,1, 270), bg],
+    ["hloc-hal_pillar_l", (93,0), (24,6,1), (1,0, 270), fg],
+    
+    ["hlzr-hal_r", (94,0), (24,6,1), 270, bg],
+    ["hlzr-hal_l", (94,0), (24,6,1), (1,0, 270), fg],
+    ["hlzr-hal_pillar_r", (95,0), (24,6,1), (0,1, 270), bg],
+    ["hlzr-hal_pillar_l", (95,0), (24,6,1), (1,0, 270), fg],
+    
+    ["eztn_r", (98,0), (30,6,1), 270, bg],
+    ["eztn_l", (98,0), (30,6,1), (1,0, 270), fg],
+    ["eztn_pillar_r", (99,0), (24,6,1), (0,1, 270), bg],
+    ["eztn_pillar_l", (99,0), (24,6,1), (1,0, 270), fg],
+    
+    ["glasswall_r", (96,0), (30,0,1), 270, bg],
+    ["glasswall_l", (96,0), (30,0,1), (1,0, 270), fg],
+    ["glasswall_low_r", (97,0), (11,0,1), 270, bg],
+    ["glasswall_low_l", (97,0), (11,0,1), (1,0, 270), fg],
+
+    ["vavi_plt", (101,0), (6,0,1), 270, ct],
+    ["vavi_edge", (101,12), (6,0,1), 90, bg],
+    ["vavi_stan", (100,0), (30,6,1), 270, bg],
+    
+    ["ahmt", (102,0), (30,6,1), 0, ct],
+    ["ahmt_edge2", (103,0), (30,6,1), (0,1), ct],
+    ["ahmt_edge1", (103,0), (30,6,1), 0, ct],
+    
+    ["small_plt_r", (104,0), (6,0,1), 0, ct],
+    ["small_plt_l", (104,0), (6,0,1), (1,0), ct],
+    
+    ["avtr_r", (105,0), (30,6,1), 0, ct],
+    ["avtr_l", (105,0), (30,6,1), (1,0), ct],
+    
+    ["12st_r", (106,0), (30,6,1), 0, ct],
+    ["12st_l", (106,0), (30,6,1), (1,0), ct],
+    
+    ["smkh_r", (107,0),       (30,6,1), 270, ct],
+    ["smkh_bench_r", (108,0), (30,6,1), 270, ct],
+    ["smkh_l", (107,0),       (30,6,1), (1,0,270), ct],
+    ["smkh_bench_l", (108,0), (30,6,1), (1,0,270), ct],
+    
+    ["octb_r", (109,0), (30,6,1), 0, ct],
+    ["octb_edge1_r", (110,0), (30,6,1), (0,1), ct],
+    ["octb_edge2_r", (110,0), (30,6,1), 0, ct],
+    ["octb_l", (109,0), (30,6,1), (1,0), ct],
+    ["octb_edge1_l", (110,0), (30,6,1), (1,1), ct],
+    ["octb_edge2_l", (110,0), (30,6,1), (1,0), ct],
+    
+    ["mist_r", (111,0), (30,6,1), 0, ct],
+    ["mist_l", (111,0), (30,6,1), (1,0), ct],
+    
+    ["zbaf_r", (112,0), (30,6,1), 0, ct],
+    ["zbaf_l", (112,0), (30,6,1), (1,0), ct],
+
 ]
 
 train_spawn_info = []
@@ -525,6 +598,7 @@ spawnpoints = [
     ["[ZRG] Zorge St", 294], ["[ZRG] Hafuri St", 386], # Zorge & Hafuri
     ["[AKS] Quarry St", 438], ["[AKS] Karuanhorai", 389], ["[AKS] Kashkadan Lake", 535], # Aksakov & Mendeleev
     ["[KMS] Avrora St", 793], ["[KMS] Koishi St", 837], ["[KMS] Glumilino", 704], ["[KMS] Bashmebel'", 754],  # Komsomol, Orenburg & Avrora
+    ["[HAL] Bashkortostan Mall", 845], ["[HAL] Vavilovskaja", 1005], ["[HAL] South Mihailovka", 1076], ["[HAL] Zabelskiy Airfield", 1106],  # Halle & Unity
 ]
 
 spawn_window = leitmotif.Window((screen.get_width()-300-4, screen.get_height()/2-200, 300, 400), font, 26, {
@@ -579,6 +653,7 @@ while working:
     released = False
     pressed = []
     unicode = ""
+    scroll = 0
     if curc == -1 or mode not in ["playing", "playing_mp"]: follow = False
 
     for evt in pg.event.get():
@@ -594,6 +669,9 @@ while working:
 
         elif evt.type == pg.MOUSEBUTTONUP:
             released = True
+
+        elif evt.type == pg.MOUSEWHEEL:
+            scroll = evt.y
 
     m_pos = pg.mouse.get_pos()
     m_btn = pg.mouse.get_pressed()
@@ -615,6 +693,7 @@ while working:
         screen.blit(t, (20,win_size[1]/2-15))
         if m_btn[0] and 20 <= m_pos[0] <= 20+t.get_width() and win_size[1]/2-15 <= m_pos[1] <= win_size[1]/2-15+t.get_height():
             mode = "playing"
+            player.pos = [0,0,0]
             curc = -1
             consists = {}
         t = sfont.render("> Multiplayer", True, (240,240,240))
@@ -708,7 +787,7 @@ while working:
             for c in consists:
                 dl = 256*8
                 for enum, tr in enumerate(consists[c].trains):
-                    temp_trains.append(Dummy(tr, c, consists[c].axial_velocity))
+                    temp_trains.append(Dummy(tr, c, consists[c].velocity*3.6*1.8))
                     if c == curc and follow:
                         if consists[curc].reversor_vector == -1 and enum == 0: player.pos = temp_trains[-1].pos
                         if consists[curc].reversor_vector == 1 and enum+1 == len(consists[c].trains): player.pos = temp_trains[-1].pos
@@ -723,11 +802,11 @@ while working:
         kbd = pg.key.get_pressed()
 
         if follow and curc != -1:
-            consists[curc].player_cycle(screen, screen.get_size(), "look here! a stroka!", pressed, kbd, [pg.mouse.get_pos(), pg.mouse.get_pressed(), clicked, released])
+            consists[curc].player_cycle(screen, pressed, kbd, (m_pos, m_btn, clicked, scroll), unicode)
             consists[curc].switch = kbd[pg.K_LALT] if consists[curc].route == None else 0
 
         fps = round(clock.get_fps())
-        speed = 16 if not kbd[pg.K_LALT] else 1
+        speed = 64 if kbd[pg.K_LSHIFT] else 16 if not kbd[pg.K_LALT] else 1
 
         if not follow:
             if kbd[pg.K_DOWN]: 
@@ -757,7 +836,7 @@ while working:
                 tmp = train.spawn_train(
                     trainpar[0],
                     trackid if type(trackid) == int else random.choice(trackid), 
-                    (trainpar[1],64), font)
+                    (trainpar[1],64), trainpar[-1])
                 if tmp != None:
                     curc = random.randint(0, 9999) if mode != "playing_mp" else own_uid
                     consists[curc] = tmp
@@ -770,13 +849,13 @@ while working:
                 tmp = train.spawn_train(
                     trainpar[0],
                     trackid if type(trackid) == int else random.choice(trackid), 
-                    (trainpar[1],64), font)
+                    (trainpar[1],64), trainpar[-1])
                 if tmp != None:
                     curc = random.randint(0, 9999) if mode != "playing_mp" else own_uid
                     consists[curc] = tmp
                     consists[curc].door_time = trainpar[2]
                     consists[curc].reversor_vector = 1
-                    consists[curc].internal.dumb = True
+                    consists[curc].internal.arcade = [False, False]
                     follow = True
 
 

@@ -10,15 +10,15 @@ font = pg.font.SysFont("verdana",20)
 radius = 0.51
 koef = 70/19
 
-eng_const = 7
-eng_res = 0.4
+eng_const = 6
+eng_res = 0.3
 
-peril_current = [300]*11+[200]*2
+peril_current = [200]*12
 
-resistances_series = [3.43, 2.86, 2.29, 1.71, 1.14, 0.56, 0, 0.97, 0.55, 0.35, 0.15, 0.0, 0.0]
+resistances_series = [4,3,2,1,0.5,0, 2,1.5,1,0.5,0.25,0]
 voltages = [""]*13
-engine_res_coef = [4]*7+[1]*6
-engine_eds_coef = [4]*7+[2]*6
+engine_res_coef = [4]*6+[1]*6
+engine_eds_coef = [4]*6+[2]*6
 #funny_thing_i_forgor = [1]*7+[2]*6
 spec_divide = [1]*7+[2]*6
 f = [0]*12+[0.15]
