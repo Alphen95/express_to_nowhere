@@ -17,20 +17,24 @@ Down: brake
 R/F - pneumo brake (add/decrease)
 Up/Down - throttle (add/decrease)
 
-for the time being, all trains share the same "realistic" control system, will be changed with newer version of internal systems.
+EACH TRAIN HAS ITS UNIQUE BEHAVIOUR WHEN NOT ON ARCADE
+(pneumatic brake should work good anywhere, tho)
 
 Route list:
+(B) - Unity Local, Zabelskiy Airfield to South Mihailovka
+<D> - Halle-Unity Express, South Mihailovka to 50 St - Bashkortostan Mall
+(T) - Halle-Unity Local, South Mihailovka to 50 St - Bashkortostan Mall
 
 (K) - Dim-October Local, Milowsk Hwy to City Culture Hall
-<J> - Hekiket St-October Av Express, Balanovo-Park to Energy College
-(M) - Hekiket St-October Av Local, Balanovo-Park to Energy-College
+<J> - Hekiket-October Av Express, Balanovo-Park to Energy College
+(M) - Hekiket-October Av Local, Balanovo-Park to Energy-College
 
 <1> - Komsomol St Express, Bashmebel to Koishi St
 (2) - Komsomol St Local, Bashmebel to Koishi St
 (3) - Komsomol St-Almalyk Local, Bashmebel to Avrora St
 
-(4) - Aksakov St-Mendeleev St Local, Quarry St or Karuanhorai to Kashkadan Lake
+(4) - Aksakov-Mendeleev Sts Local, Quarry St or Karuanhorai to Kashkadan Lake
 
 <5> - Hafuri & Zorge Sts Elevated, Hafuri St to Zorge St
 
-(B), (D), (T), (S) - NO SERVICE UNTIL 0.6 (or later)
+(S) - NO SERVICE
